@@ -1,0 +1,26 @@
+name: Vetted AI Code Review
+description: >-
+  Governed, advisory AI code review. Scrubs secrets and personal data before
+  anything reaches a model, reports prompt-injection attempts, and only ever
+  comments: it never approves, requests changes or merges.
+author: Michael Mendoza
+
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  mode:
+    description: >-
+      Rollout mode. `shadow` writes an audit artifact only and posts no
+      comments. `opt-in` reviews pull requests labelled `ai-review`.
+    required: false
+    default: shadow
+
+outputs:
+  mode:
+    description: The mode Vetted ran in.
+
+runs:
+  using: node24
+  main: dist/index.js
