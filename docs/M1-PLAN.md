@@ -1,6 +1,6 @@
 # Milestone 1 plan: Vetted v0.1 (draft for Michael's approval)
 
-Status: drafted by Claude Code, awaiting Michael's review. Due: **Sun 25 Oct
+Status: approved by Michael Mendoza on 2026-09-28 (model default later amended in ADR 0003). Due: **Sun 25 Oct
 2026** (end of week 4, where week 1 starts Mon 28 Sep). Budget: about 30 of
 Michael's hours. Sizes are in Michael's time (review, running, decisions): **S**
 ≈ 1–2h, **M** ≈ 3–4h, **L** ≈ 5–6h.
@@ -11,7 +11,7 @@ Michael's hours. Sizes are in Michael's time (review, running, decisions): **S**
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 0001 | Separate repos (`vetted`, `sg-pii-rules`, `discreet`, `makoydev.github.io`), all public from day one                                                               | Monorepo. The Marketplace needs `action.yml` at the root of a single-action repo, and branch protection is free only on public repos |
 | 0002 | TypeScript JS action on `node24`, from the `actions/typescript-action` template, `dist/` committed                                                                 | Docker action (slower cold start, harder to pin). Composite action (logic in shell is hard to test)                                  |
-| 0003 | OpenAI behind a `ModelClient` interface, default `gpt-5-nano`, with Structured Outputs _and_ our own schema validation                                             | Claude Haiku / GitHub Models (Michael's call). Trusting provider-side schema enforcement alone                                       |
+| 0003 | OpenAI behind a `ModelClient` interface, default `gpt-6-luna` (amended by Michael on review), with Structured Outputs _and_ our own schema validation              | Claude Haiku / GitHub Models (Michael's call). Trusting provider-side schema enforcement alone                                       |
 | 0004 | Hard daily budget as a **worst-case bound**: per-run cost ceiling × max paid runs per UTC day (counted via the Actions API) ≤ daily budget                         | Actual-spend ledger. That needs a writable store, which conflicts with `contents: read`; it comes in M3 with the metrics branch      |
 | 0005 | Secret rules: gitleaks' default rule set vendored at a pinned tag and executed with `re2js` (pure-JS RE2, same regex semantics as Go) plus a Shannon-entropy check | Shelling out to a downloaded gitleaks binary (a supply-chain step at runtime). Hand-written regexes (not the recognised rule set)    |
 | 0006 | Suspected injection text stays in the diff; a detector reports each hit as its own finding                                                                         | Stripping it (hides it from the human reviewer and can change what the code means)                                                   |
@@ -157,7 +157,7 @@ fixtures recorded in EVALS.md.
 
 ### #6 Model client, prompt and budget guard — L
 
-`ModelClient` interface, recording `MockModel`, `OpenAIModel` (`gpt-5-nano`
+`ModelClient` interface, recording `MockModel`, `OpenAIModel` (`gpt-6-luna`
 default, low reasoning effort, `max_output_tokens`), a system prompt that treats
 the diff as delimited untrusted data and forbids following embedded
 instructions, SHA-256 prompt hash, and a budget guard (ADR 0004). Turn on
@@ -189,7 +189,7 @@ fixture PRs; the canary job is a required status check.
 Create the `discreet` repo whose first PR adds Vetted in shadow mode; switch
 Vetted's own repo to opt-in; `CONTROLS.md` v0 (tier-1 frameworks, primary
 sources, "unverified" where not read); `THREAT_MODEL.md`; `EVALS.md` v0 (canary
-results, PII fixture numbers, nano-vs-mini on ~10 fixture PRs with sample size
+results, PII fixture numbers, Luna-vs-nano on ~10 fixture PRs with sample size
 and limits); README five-minute quickstart tested on a clean clone;
 `docs/CV-NUMBERS.md`; release v0.1.0. **AC:** the quickstart works from a fresh
 clone; every CONTROLS row cites a source + section or says "unverified"; Vetted
@@ -198,7 +198,7 @@ Release exists.
 
 **Total:** 4 + 6 + 4 + 6 + 3 + 6 + 4 + 3 + 6 ≈ **42h at the top of each range,
 about 30h at the bottom.** That is tight. **Cut line, in order, if we are behind
-at the end of week 3:** (1) nano-vs-mini comparison → Next; (2) entropy check →
+at the end of week 3:** (1) Luna-vs-nano comparison → Next; (2) entropy check →
 Next (gitleaks rules only); (3) sg-pii-rules drops email and keeps NRIC/FIN +
 phone. Canary suite, audit artifact and CONTROLS.md are never cut.
 
