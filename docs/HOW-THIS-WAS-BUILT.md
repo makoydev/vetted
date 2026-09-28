@@ -16,6 +16,12 @@ Vetted is built with AI assistance (Claude Code) under the same kind of controls
 5. **Decisions recorded** as ADRs marked "awaiting Michael's review" until he confirms them.
 6. **Tests in CI**, and from issue #6 onward Vetted reviews its own pull requests.
 
+## Decisions changed on human review
+
+| Date       | Proposed by Claude Code                         | Changed by Michael to                                                                            | Where    |
+| ---------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------- |
+| 2026-09-28 | Default model `gpt-5-nano`, the cheapest option | `gpt-6-luna`, the newer small model; the cheaper model stays in the evaluation as the comparison | ADR 0003 |
+
 ## Exceptions
 
 - The very first commit (`LICENSE`, a README stub, `.gitignore`) was pushed directly to `main`, because branch protection needs the branch to exist first. Every later change goes through a pull request.

@@ -1,6 +1,6 @@
 # 0008. Pull requests from Michael's account, labelled ai-drafted
 
-Status: drafted by Claude Code, awaiting Michael's review
+Status: accepted. Drafted by Claude Code; reviewed and accepted by Michael Mendoza on 2026-09-28.
 Date: 2026-09-28
 
 ## Context

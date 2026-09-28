@@ -46,7 +46,7 @@ If something does not fit, move it to "Next" in the README with the reason. Do n
 
 - TypeScript on `node24` (`.nvmrc`; Node 20 was removed from runners on 23 Sep 2026), based on `actions/typescript-action`.
 - Bundled to `dist/` (committed; CI checks it is up to date). Jest for tests. ESLint + Prettier (markdown wrap preserved).
-- Model client is an interface: `MockModel` (records every request), `OpenAIModel` (default `gpt-5-nano`).
+- Model client is an interface: `MockModel` (records every request), `OpenAIModel` (default `gpt-6-luna`, low reasoning effort).
 - Keep code conventional and readable. Michael must be able to explain every line in an interview.
 - Conventional commits. One branch and one PR per issue (`feat/12-secret-scrubbing`). Squash merges only. SemVer tags + GitHub Releases.
 
