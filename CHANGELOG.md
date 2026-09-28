@@ -15,3 +15,4 @@ All notable changes to this project are documented here. The format follows
   action itself. CodeQL for TypeScript and workflow files. All third-party
   Actions pinned by commit SHA and kept current by Dependabot.
 - `CLAUDE.md` working rules and the Milestone 1 plan in `docs/M1-PLAN.md`.
+- ADRs 0001–0008, `RISKS.md`, `docs/HOW-THIS-WAS-BUILT.md`, and a README describing intended behaviour and status ([#1](https://github.com/makoydev/vetted/issues/1)).
