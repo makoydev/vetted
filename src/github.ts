@@ -27,6 +27,16 @@ export interface GitHubApi {
     sinceIso: string,
     stopAt: number
   ): Promise<number>
+  /**
+   * Posts a review whose event is always COMMENT. There is deliberately no
+   * way to pass APPROVE or REQUEST_CHANGES: Vetted advises, humans decide.
+   */
+  postCommentReview(
+    pullNumber: number,
+    commitSha: string,
+    body: string,
+    comments: { path: string; line: number; side: 'RIGHT'; body: string }[]
+  ): Promise<number>
 }
 
 function isNotFound(error: unknown): boolean {
@@ -87,6 +97,19 @@ export function createGitHubApi(
         if (data.workflow_runs.length < 100) break
       }
       return count
+    },
+
+    async postCommentReview(pullNumber, commitSha, body, comments) {
+      const { data } = await octokit.rest.pulls.createReview({
+        owner,
+        repo,
+        pull_number: pullNumber,
+        commit_id: commitSha,
+        body,
+        event: 'COMMENT',
+        comments
+      })
+      return data.id
     },
 
     async getFileText(path, ref) {

@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import { getOctokit } from '@actions/github'
+import { renderReview } from './comments.js'
 import { ConfigError, loadConfig, type VettedConfig } from './config.js'
 import {
   readEventContext,
@@ -7,7 +8,9 @@ import {
   type PullRequestContext
 } from './context.js'
 import { decide, parseMode, type GateDecision } from './gate.js'
+import { parseModelOutput, placeFindings } from './findings.js'
 import { createGitHubApi, type GitHubApi } from './github.js'
+import { detectInjection } from './injection.js'
 import { checkBudget, type BudgetCheck } from './model/budget.js'
 import {
   ModelError,
@@ -168,7 +171,8 @@ export async function run(
     const choice = await chooseModel(gate, config, apiKey, pr, api, deps)
     core.info(choice.reason)
 
-    let result: ModelResult
+    let result: ModelResult | null = null
+    let modelProblem = ''
     try {
       result = await choice.client.complete({
         model: choice.client.provider === 'mock' ? 'mock' : config.model,
@@ -180,26 +184,103 @@ export async function run(
       })
     } catch (error) {
       if (!(error instanceof ModelError)) throw error
-      core.warning(`${error.message}. Nothing was posted.`)
-      core.setOutput('decision', 'model-error')
-      return
+      modelProblem = error.message
+      core.warning(`${error.message}. No AI findings will be posted.`)
     }
 
+    const usage = result?.usage ?? {
+      inputTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0
+    }
     const cost =
-      choice.client.provider === 'mock'
+      result === null || choice.client.provider === 'mock'
         ? 0
-        : costUsd(config.model, result.usage)
+        : costUsd(config.model, usage)
+    if (result !== null) {
+      core.info(
+        `Model ${result.model}: ${result.status}, ${usage.inputTokens} input / ` +
+          `${usage.outputTokens} output tokens, about US$${cost.toFixed(4)}, ` +
+          `${result.latencyMs} ms.`
+      )
+    }
+
+    // Model output is untrusted: it must match the schema or none of it is used.
+    const parsed =
+      result === null
+        ? {
+            ok: false as const,
+            reason: `the model call failed (${modelProblem})`
+          }
+        : result.status !== 'completed'
+          ? {
+              ok: false as const,
+              reason: `the model's answer was ${result.status} (${result.detail ?? 'no detail'})`
+            }
+          : parseModelOutput(result.text)
+    if (!parsed.ok) core.warning(`AI findings discarded: ${parsed.reason}.`)
+    const placed = parsed.ok
+      ? placeFindings(parsed.findings, files)
+      : { inline: [], general: [] }
+    // Rule-based, so reported even when the model's output is unusable: an
+    // attacker who breaks the model's output must not also hide the attempt.
+    const injection = detectInjection(files)
     core.info(
-      `Model ${result.model}: ${result.status}, ${result.usage.inputTokens} input / ` +
-        `${result.usage.outputTokens} output tokens, about US$${cost.toFixed(4)}, ` +
-        `${result.latencyMs} ms.`
+      `Findings: ${placed.inline.length} on diff lines, ${placed.general.length} elsewhere, ` +
+        `${injection.length} possible prompt injection(s).`
     )
+
+    const decision =
+      result === null
+        ? 'model-error'
+        : result.status !== 'completed'
+          ? `model-${result.status}`
+          : parsed.ok
+            ? 'reviewed'
+            : 'invalid-output'
+
+    // Shadow mode never posts. A mock review only posts if a rule found something.
+    const hasSomethingToSay =
+      injection.length > 0 || (parsed.ok && choice.client.provider !== 'mock')
+    let commentsPosted = 0
+    if (gate.postComments && hasSomethingToSay) {
+      const review = renderReview({
+        summary: parsed.ok ? parsed.summary : null,
+        unavailableReason: parsed.ok ? undefined : parsed.reason,
+        inline: placed.inline,
+        general: placed.general,
+        injection,
+        report,
+        disclosure: {
+          model: result?.model ?? config.model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          costUsd: cost,
+          report
+        }
+      })
+      try {
+        await api.postCommentReview(
+          pr.number,
+          pr.headSha,
+          review.body,
+          review.comments
+        )
+        commentsPosted = review.comments.length
+        core.info(
+          `Posted an advisory review with ${commentsPosted} comment(s).`
+        )
+      } catch (error) {
+        core.warning(`Could not post the review: ${(error as Error).message}`)
+      }
+    }
+
     core.setOutput('prompt-sha256', prompt.sha256)
     core.setOutput('cost-usd', cost.toFixed(6))
-    core.setOutput(
-      'decision',
-      result.status === 'completed' ? 'reviewed' : `model-${result.status}`
-    )
+    core.setOutput('findings', placed.inline.length + placed.general.length)
+    core.setOutput('injection-findings', injection.length)
+    core.setOutput('comments-posted', commentsPosted)
+    core.setOutput('decision', decision)
   } catch (error) {
     if (error instanceof ConfigError) {
       core.setFailed(`Configuration error, nothing was sent: ${error.message}`)
