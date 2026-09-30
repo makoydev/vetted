@@ -27,7 +27,7 @@ Option 3:
 - **Every review is posted with event `COMMENT`.** The GitHub wrapper has no parameter for the event, and a test fails if `'APPROVE'` or `'REQUEST_CHANGES'` appears anywhere in the source.
 - **AI findings are tagged `[AI]`; rule findings are tagged `[Vetted]`** and say they don't come from the model. Readers should know which comments a model wrote.
 - **A finding the model places outside the diff** (a wrong line or file) is listed in the review body, not dropped, because GitHub rejects a whole review if one inline comment points outside the diff.
-- **Model text is sanitised before posting** (OWASP LLM05:2025, improper output handling). Markdown images and links are removed, because a rendered image URL is a known way to leak data out of an AI system. HTML is stripped, and `@mentions` are defused so the model can't notify people.
+- **Model text is sanitised before posting** (OWASP LLM05:2025, improper output handling). Markdown images and links are removed, because a rendered image URL is a known way to leak data out of an AI system. HTML is escaped (not stripped: stripping can be bypassed by nesting tags, which CodeQL caught), and `@mentions` are defused so the model can't notify people.
 - If posting fails (for example with a read-only token on a fork pull request), the step warns but doesn't fail: Vetted is advisory and must never block a merge by itself.
 
 ## Consequences

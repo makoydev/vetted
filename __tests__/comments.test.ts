@@ -44,9 +44,13 @@ describe('sanitize', () => {
     )
   })
 
-  it('defuses @mentions and strips HTML', () => {
+  it('defuses @mentions and escapes HTML', () => {
     expect(sanitize('cc @octocat')).toBe('cc @​octocat')
-    expect(sanitize('<img src=x onerror=alert(1)>bold')).toBe('bold')
+    expect(sanitize('<img src=x onerror=alert(1)>bold')).toBe(
+      '&lt;img src=x onerror=alert(1)&gt;bold'
+    )
+    // Nested tags can't be reassembled into a tag after sanitising.
+    expect(sanitize('<scr<script>ipt>')).not.toMatch(/<script/i)
   })
 })
 

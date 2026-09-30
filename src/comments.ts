@@ -18,16 +18,21 @@ export interface Review {
 /**
  * Model text is untrusted output (OWASP LLM05:2025). Before posting:
  * images and links are removed (a markdown image URL is a known channel for
- * leaking data out of an AI system), and @mentions are defused so the model
- * can't notify people.
+ * leaking data out of an AI system), HTML is escaped, and @mentions are
+ * defused so the model can't notify people.
  */
 export function sanitize(text: string): string {
-  return text
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '[image removed]')
-    .replace(/\[([^\]]*)\]\((?:https?:)?\/\/[^)]*\)/g, '$1 [link removed]')
-    .replace(/<\/?[a-z][^>]*>/gi, '')
-    .replace(/\bhttps?:\/\/\S+/gi, '[link removed]')
-    .replace(/@(?=[A-Za-z0-9-])/g, '@​')
+  return (
+    text
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '[image removed]')
+      .replace(/\[([^\]]*)\]\((?:https?:)?\/\/[^)]*\)/g, '$1 [link removed]')
+      // Escape rather than strip tags: stripping can be bypassed by nesting
+      // (`<scr<script>ipt>`), escaping can't.
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\bhttps?:\/\/\S+/gi, '[link removed]')
+      .replace(/@(?=[A-Za-z0-9-])/g, '@​')
+  )
 }
 
 const label = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)

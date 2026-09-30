@@ -34075,16 +34075,19 @@ const VERSION = '0.1.0';
 /**
  * Model text is untrusted output (OWASP LLM05:2025). Before posting:
  * images and links are removed (a markdown image URL is a known channel for
- * leaking data out of an AI system), and @mentions are defused so the model
- * can't notify people.
+ * leaking data out of an AI system), HTML is escaped, and @mentions are
+ * defused so the model can't notify people.
  */
 function sanitize(text) {
-    return text
+    return (text
         .replace(/!\[[^\]]*\]\([^)]*\)/g, '[image removed]')
         .replace(/\[([^\]]*)\]\((?:https?:)?\/\/[^)]*\)/g, '$1 [link removed]')
-        .replace(/<\/?[a-z][^>]*>/gi, '')
+        // Escape rather than strip tags: stripping can be bypassed by nesting
+        // (`<scr<script>ipt>`), escaping can't.
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
         .replace(/\bhttps?:\/\/\S+/gi, '[link removed]')
-        .replace(/@(?=[A-Za-z0-9-])/g, '@​');
+        .replace(/@(?=[A-Za-z0-9-])/g, '@​'));
 }
 const label = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const FEEDBACK = '<sub>Advisory only: a human decides. React 👍 or 👎, or add the `ai-false-positive` label to report a wrong finding.</sub>';
