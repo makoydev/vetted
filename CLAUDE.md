@@ -12,7 +12,11 @@ It is one of two public controls in Michael Mendoza's (makoydev) AI governance p
 The portfolio must prove three things: he can ship, he can govern, he can run a programme.
 **Evidence beats features.** Never cut an evidence artifact to make room for a capability.
 
-## Current milestone: M1, Vetted v0.1 (due Sun 25 Oct 2026)
+## Milestones
+
+M1 (Vetted v0.1) was released as v0.1.0 on 2026-10-01 after Michael's review. Next for Vetted is M3 (due 6 Dec 2026):
+metrics branch and dashboard, default-on mode, suppressions with `until:`, Marketplace listing, v1.0.0. M2 is Discreet.
+M1 scope, for reference:
 
 In: shadow and opt-in modes, pre-send pipeline (path allow/deny, size cap, secret scrubbing,
 PII scrubbing via vendored `sg-pii-rules`), injection defences, schema-validated comments with

@@ -1,6 +1,6 @@
 # 0010. How Vetted applies gitleaks' rules, and where it deliberately differs
 
-Status: drafted by Claude Code, awaiting Michael's review
+Status: accepted. Drafted by Claude Code; reviewed and accepted by Michael Mendoza on 2026-10-01.
 Date: 2026-09-30
 
 ## Context

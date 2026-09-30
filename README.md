@@ -2,7 +2,7 @@
 
 **Governed, advisory AI code review for GitHub Actions.** Vetted removes secrets and Singapore personal data from a pull request's diff before an AI model sees it, reports prompt-injection attempts instead of obeying them, and posts comments that are clearly labelled as AI advice. It never approves, requests changes or merges: a human decides.
 
-> **Status: v0.1.0 candidate on the `next` branch, awaiting human review.** 408 unit tests and a 34-run canary suite pass (0 leaks). Reviews use a free mock model until an OpenAI key is configured. Not yet on the Marketplace (Milestone 3).
+> **Status: v0.1.0 released on 2026-10-01** after human review. 408 unit tests and a 34-run canary suite pass (0 leaks). Reviews use a free mock model until an OpenAI key is configured. Not yet on the Marketplace (Milestone 3).
 
 ## Why
 
@@ -36,7 +36,7 @@ Teams want AI help with code review but can't send credentials or customer data 
      review:
        runs-on: ubuntu-latest
        steps:
-         - uses: makoydev/vetted@20d8da3c76ec7ddac7e6a4a15c883b76742a70d6 # pin; v0.1.0 once released
+         - uses: makoydev/vetted@v0.1.0 # for production, pin the release's full commit SHA instead
            with:
              mode: shadow # start here; switch to opt-in later
              openai-api-key: ${{ secrets.OPENAI_API_KEY }} # optional: without it, the mock is used
@@ -50,7 +50,7 @@ Teams want AI help with code review but can't send credentials or customer data 
 ## Quickstart: develop (verified on a fresh clone in 22 seconds)
 
 ```sh
-git clone https://github.com/makoydev/vetted.git && cd vetted && git checkout next
+git clone https://github.com/makoydev/vetted.git && cd vetted
 npm ci            # Node 24 (see .nvmrc)
 npm run all       # format, lint, 408 tests, 34-run canary suite, bundle
 npm run canary    # just the canary suite: expect "canary leaks: 0"
