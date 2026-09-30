@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Vetted's self-review is pinned to the v0.1.0 release commit.
+
 ## [0.1.0] - 2026-10-01
 
 First release (Milestone 1): governed, advisory AI code review for GitHub Actions. Reviewed and approved by Michael Mendoza on 2026-10-01.
