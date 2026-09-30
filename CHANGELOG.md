@@ -6,40 +6,35 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
+## [0.1.0] - 2026-10-01
 
-- Config file `.vetted.yml` (`limits.max_diff_bytes` is measured in UTF-8 bytes, which bounds input tokens), read from the pull request's **base** commit and validated against a JSON Schema; invalid config fails closed (nothing is sent) ([#3](https://github.com/makoydev/vetted/issues/3)).
-- Mode gating: `shadow` runs on every pull request and never comments; `opt-in` runs only with the `ai-review` label and ignores unrelated label events; fork pull requests and runs without an API key use the mock model.
-- Changed files are read through the GitHub REST API; Vetted never checks out the pull request's code. Only `pull_request` events are supported; `pull_request_target` is refused.
-- Action inputs `github-token`, `openai-api-key` (masked in logs) and `config-path`.
-- Pre-send pipeline, first part ([#4](https://github.com/makoydev/vetted/issues/4)): a default deny list that config can extend or narrow but never re-open (`.env*`, `secrets/**`, keys and certificates, credential files, lockfiles, generated and vendored code, binaries); removed files and files without a text diff are skipped; a file cap and a character cap skip whole files and list them, never truncating one silently.
-- Secret scrubbing ([#4](https://github.com/makoydev/vetted/issues/4)): gitleaks' 221 default text rules (v8.30.1, vendored with checksums and licence) run with `re2js`, with five deliberate, tested differences that make it stricter (ADR 0010); plus an entropy backstop (32+ characters above 4.3 bits) for secrets no rule names. Parity with the real gitleaks binary: nothing gitleaks found was missed on its 3,658 test strings, and results were identical on 2,028 real source files.
-- Personal-data scrubbing ([#5](https://github.com/makoydev/vetted/issues/5)): Singapore NRIC/FIN (valid check letter), NRIC look-alikes with a wrong check letter (scrubbed too, so a mistyped NRIC never leaks), Singapore phone numbers and email addresses are replaced with `<NRIC>`, `<NRIC_LIKE>`, `<PHONE>` and `<EMAIL>`. Rules come from sg-pii-rules `v0.1.0-rc.1`, vendored with checksums (`scripts/vendor-sg-pii-rules.sh`); Vetted's implementation passes all 184 shared conformance cases.
-- Model client ([#6](https://github.com/makoydev/vetted/issues/6)): OpenAI's Responses API over plain `fetch` (`gpt-6-luna` by default, low reasoning effort, strict structured output, `store: false`), retries for rate limits and server errors but never for spend-limit errors, and a free `MockModel` that records every request. The OpenAI client refuses to be constructed with real network access inside tests.
-- Prompt: fixed system instructions that call the diff untrusted data, the diff wrapped in markers with a random 64-bit nonce, and a SHA-256 of exactly what is sent.
-- Budget guard (ADR 0004): a hard per-run ceiling from the prompt's byte cap and the output-token cap, and at most `daily_budget_usd / ceiling` paid runs per UTC day, counted through the Actions API. An unknown model price, an unreadable run count or a used-up budget all fall back to the mock model.
-- Findings and comments ([#7](https://github.com/makoydev/vetted/issues/7)): model output must match the findings schema (lengths included) or none of it is used; findings are checked against the lines actually in the diff; rule-based prompt-injection detection (override attempts, chat-template role markers, reviewer manipulation, prompt-exfiltration requests, invisible and bidirectional-control characters) reports each hit as its own `[Vetted]` finding while leaving the text in the diff; AI findings are posted as `[AI]` review comments with severity, confidence, category and a disclosure footer (model, version, tokens, cost, redaction counts); reviews are always posted with event `COMMENT`; model text is sanitised (no links, images, HTML or mentions) before posting (ADR 0012).
-- Audit record ([#8](https://github.com/makoydev/vetted/issues/8)): every run, including skipped and failed ones, produces a schema-validated JSON record (run and pull request, mode, decision and reasons, config hash, rule versions, prompt SHA-256 and size, model, tokens, cost, budget state, scrub counts, finding metadata, injection hits, posting result, latency). It holds no diff text, prompt text or model prose, is uploaded as a workflow artifact kept for 30 days, and is summarised on the run page.
-- Canary suite (`npm run canary`, its own CI job): 17 synthetic pull requests with 144 canary values (fake secrets from 29 providers, synthetic NRICs, phone numbers and emails, and injection payloads in code, strings, hidden characters and file names) run through the real pipeline in shadow mode and in opt-in mode against a hostile model that echoes everything it was sent. Every canary is searched for in the model request, logs, audit record and comments: 0 leaks. Removing the scrubbers (165 leaks), the PII scrubber (71) or the path deny list (3) makes it fail.
-- Prompt-injection detection also scans file names.
-- Evidence for v0.1.0 ([#9](https://github.com/makoydev/vetted/issues/9)): `CONTROLS.md` (18 features mapped to IMDA, PDPA/PDPC, OWASP, CSA, NIST and ISO controls, with graded sources and gaps), `THREAT_MODEL.md` (13 threats), `EVALS.md` (canary, parity, calibration, cost bound, pilot, limitations), `docs/CV-NUMBERS.md`, and a README with user and developer quickstarts (developer quickstart verified on a fresh clone in 22 s).
-- Pilot: the new `discreet` repository is reviewed by Vetted from its first pull request (shadow mode until 2026-10-14, then opt-in); the first audit record exists.
-- Vetted's own reviews switch from shadow to opt-in.
-- Dogfooding: `.github/workflows/vetted.yml` runs Vetted on this repository's own pull requests in shadow mode, pinned to an already-merged commit (never `uses: ./`), with this repository's `.vetted.yml`.
-- Scripts: `npm run vendor:gitleaks`, `npm run parity:gitleaks`, `npm run measure:entropy`.
-- Diff handling: each file's patch is parsed into numbered lines; the model sees new-file line numbers; redaction keeps the line structure intact, including for secrets that span several lines.
-
-### Changed
-
-- Workflow: pull requests now target the protected `next` integration branch and are merged by Claude Code once CI passes; Michael reviews and merges `next` into `main` (ADR 0009). CI runs on `next`; Dependabot targets `next` and skips major upgrades of `typescript` and `@types/node`.
+First release (Milestone 1): governed, advisory AI code review for GitHub Actions. Reviewed and approved by Michael Mendoza on 2026-10-01.
 
 ### Added
 
-- Project scaffold from the `actions/typescript-action` template on the `node24`
-  runtime, with a `mode` input (`shadow`, `opt-in`) that fails closed on unknown
-  values ([#1](https://github.com/makoydev/vetted/issues/1)).
-- CI: format, lint, tests, `dist/` freshness check, and a job that runs the
-  action itself. CodeQL for TypeScript and workflow files. All third-party
-  Actions pinned by commit SHA and kept current by Dependabot.
-- `CLAUDE.md` working rules and the Milestone 1 plan in `docs/M1-PLAN.md`.
-- ADRs 0001–0008, `RISKS.md`, `docs/HOW-THIS-WAS-BUILT.md`, and a README describing intended behaviour and status ([#1](https://github.com/makoydev/vetted/issues/1)).
+- **Rollout and config** ([#3](https://github.com/makoydev/vetted/issues/3)): `shadow` mode reviews every pull request and only writes an audit record; `opt-in` mode reviews pull requests labelled `ai-review` and comments. Fork pull requests and runs without an API key use the free mock model. `.vetted.yml` is read from the pull request's **base** commit and validated against a JSON Schema with hard upper bounds; invalid config fails closed. Only `pull_request` events are accepted; the diff is read through the API and the pull request's code is never checked out.
+- **Pre-send pipeline** ([#4](https://github.com/makoydev/vetted/issues/4), [#5](https://github.com/makoydev/vetted/issues/5)):
+  - a default deny list (`.env*`, `secrets/**`, keys, credential files, lockfiles, generated and vendored code, binaries) that config can extend or narrow but never re-open;
+  - file and size caps (in UTF-8 bytes) that skip whole files and list them;
+  - secret scrubbing with gitleaks' 221 text rules (v8.30.1, vendored with checksums and licence) on RE2, five deliberate stricter differences (ADR 0010), and an entropy backstop;
+  - Singapore personal-data scrubbing (NRIC/FIN, NRIC look-alikes, phone, email) from sg-pii-rules `v0.1.0`, vendored with checksums;
+  - redaction that keeps every line number intact.
+- **Model and budget** ([#6](https://github.com/makoydev/vetted/issues/6)): OpenAI's Responses API over plain `fetch` (`gpt-6-luna` by default, strict structured output, `store: false`, careful retries), a recording `MockModel`, system instructions that label the diff untrusted with a random-nonce delimiter, and a hard daily budget as a worst-case bound (ADR 0004). Anything uncertain falls back to the mock (ADR 0011).
+- **Findings and comments** ([#7](https://github.com/makoydev/vetted/issues/7)): schema validation of model output (lengths included); findings checked against the lines in the diff; rule-based prompt-injection detection in added lines and file names, reported as `[Vetted]` findings while the text stays in the diff; `[AI]` review comments with severity, confidence, category and a disclosure footer; posting with event `COMMENT` only; model text sanitised before posting (ADR 0012).
+- **Audit and evidence** ([#8](https://github.com/makoydev/vetted/issues/8), [#9](https://github.com/makoydev/vetted/issues/9)): a schema-validated audit record for every run (hashes and counts, never code), uploaded as a workflow artifact; the canary suite (17 synthetic pull requests, 144 canary values, 4 output channels, 0 leaks, and it fails when any protection is removed); `CONTROLS.md`, `THREAT_MODEL.md`, `EVALS.md`, `docs/CV-NUMBERS.md`, and user and developer quickstarts.
+- **Tooling and CI** ([#1](https://github.com/makoydev/vetted/issues/1)): TypeScript on `node24` from GitHub's template; CI with lint, 408 unit tests, the canary suite, a `dist/` check, running the action, and CodeQL (all required); SHA-pinned Actions and Dependabot; scripts `vendor:gitleaks`, `parity:gitleaks`, `measure:entropy`.
+- **Pilot**: Vetted reviews its own pull requests (pinned to a merged commit, never `uses: ./`) and the new `discreet` repository from its first pull request (shadow mode until 2026-10-14, then opt-in).
+- ADRs 0001–0012, `RISKS.md`, and `docs/HOW-THIS-WAS-BUILT.md`, including every AI mistake and how it was caught.
+
+### Process
+
+- From 2026-09-30, pull requests targeted the protected `next` integration branch and were merged by Claude Code once every check passed (ADR 0009). Michael reviewed the batch with a decision report and approved it on 2026-10-01; at his instruction, Claude Code rebase-merged `next` into `main` and published this release.
+
+### Known limitations
+
+- No real-model numbers yet: every review so far used the mock model, because `OPENAI_API_KEY` isn't set (`EVALS.md` §8).
+- `PHONE` fires on bare eight-digit numeric constants in code (`EVALS.md` §3).
+- Base64-encoded secrets aren't decoded; names and addresses aren't detected.
+
+[Unreleased]: https://github.com/makoydev/vetted/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/makoydev/vetted/releases/tag/v0.1.0
