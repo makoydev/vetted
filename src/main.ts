@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import { getOctokit } from '@actions/github'
+import { newAuditRecord, type AuditRecord } from './audit.js'
 import { renderReview } from './comments.js'
 import { ConfigError, loadConfig, type VettedConfig } from './config.js'
 import {
@@ -7,8 +8,8 @@ import {
   type EventContext,
   type PullRequestContext
 } from './context.js'
-import { decide, parseMode, type GateDecision } from './gate.js'
 import { parseModelOutput, placeFindings } from './findings.js'
+import { decide, parseMode, type GateDecision } from './gate.js'
 import { createGitHubApi, type GitHubApi } from './github.js'
 import { detectInjection } from './injection.js'
 import { checkBudget, type BudgetCheck } from './model/budget.js'
@@ -27,8 +28,9 @@ import {
 } from './model/prompt.js'
 import { entropyScrubber } from './pipeline/entropy.js'
 import { runPipeline, type Scrubber } from './pipeline/index.js'
-import { piiScrubber } from './pipeline/pii.js'
-import { secretScrubber } from './pipeline/secrets.js'
+import { PII_RULES_VERSION, piiScrubber } from './pipeline/pii.js'
+import { GITLEAKS_VERSION, secretScrubber } from './pipeline/secrets.js'
+import { publishAudit } from './publish.js'
 
 /** Everything `run` needs from the outside world, so tests can replace it. */
 export interface RunDependencies {
@@ -38,6 +40,7 @@ export interface RunDependencies {
   createModel: (apiKey: string) => ModelClient
   createMock: () => ModelClient
   now: () => Date
+  publishAudit: (record: AuditRecord) => Promise<void>
 }
 
 export const defaultDependencies: RunDependencies = {
@@ -48,7 +51,8 @@ export const defaultDependencies: RunDependencies = {
   scrubbers: [secretScrubber, entropyScrubber, piiScrubber],
   createModel: (apiKey) => new OpenAIModel(apiKey),
   createMock: () => new MockModel(),
-  now: () => new Date()
+  now: () => new Date(),
+  publishAudit
 }
 
 interface ModelChoice {
@@ -60,7 +64,7 @@ interface ModelChoice {
 /**
  * Picks the paid model only when the gate allows it, the model has a known
  * price, and today's worst-case spend stays within the budget. Anything
- * uncertain falls back to the free mock.
+ * uncertain falls back to the free mock (ADR 0011).
  */
 async function chooseModel(
   gate: GateDecision,
@@ -75,8 +79,7 @@ async function chooseModel(
     reason,
     budget
   })
-  if (!gate.useRealModel)
-    return mock('Mock model: see the gate decision above.')
+  if (!gate.useRealModel) return mock('Mock model: see the gate decision.')
 
   const ceiling = ceilingUsd(
     config.model,
@@ -111,12 +114,27 @@ async function chooseModel(
   return { client: deps.createModel(apiKey), reason: budget.reason, budget }
 }
 
-/** The main function for the action. Orchestration only; logic lives in modules. */
+/**
+ * The main function for the action. Orchestration only; logic lives in
+ * modules. Every run, including skipped and failed ones, ends with an audit
+ * record.
+ */
 export async function run(
   deps: RunDependencies = defaultDependencies
 ): Promise<void> {
+  const started = deps.now()
+  const audit = newAuditRecord(started, {
+    gitleaks: GITLEAKS_VERSION,
+    sgPiiRules: PII_RULES_VERSION
+  })
+  const note = (reason: string) => {
+    audit.reasons.push(reason)
+    core.info(reason)
+  }
+
   try {
     const mode = parseMode(core.getInput('mode'))
+    audit.mode = mode
     const token = core.getInput('github-token')
     const apiKey = core.getInput('openai-api-key')
     if (apiKey) core.setSecret(apiKey)
@@ -125,16 +143,30 @@ export async function run(
 
     const event = deps.readContext()
     if (event.kind === 'unsupported') {
-      core.info(
+      audit.decision = 'skipped'
+      note(
         `Vetted only runs on pull_request events, not "${event.eventName}". Nothing to do.`
       )
-      core.setOutput('decision', 'skipped')
       return
     }
     const pr = event.pr
+    Object.assign(audit.run, {
+      repository: `${pr.owner}/${pr.repo}`,
+      pullRequest: pr.number,
+      headSha: pr.headSha,
+      baseSha: pr.baseSha,
+      runId: pr.runId,
+      runAttempt: pr.runAttempt,
+      action: pr.action ?? null
+    })
     const api = deps.createApi(token, pr.owner, pr.repo)
 
-    const { config, source } = await loadConfig(api, configPath, pr.baseSha)
+    const { config, source, sha256 } = await loadConfig(
+      api,
+      configPath,
+      pr.baseSha
+    )
+    audit.config = { source, sha256 }
     core.info(`Config: ${source}`)
 
     const gate = decide({
@@ -146,14 +178,15 @@ export async function run(
       isFork: pr.isFork,
       hasApiKey: apiKey !== ''
     })
-    core.info(gate.reason)
+    note(gate.reason)
     if (!gate.run) {
-      core.setOutput('decision', 'skipped')
+      audit.decision = 'skipped'
       return
     }
 
     const changed = await api.listChangedFiles(pr.number)
     const { files, report } = runPipeline(changed, config, deps.scrubbers)
+    audit.scrub = report
     // Counts only: never log file content or anything that was scrubbed.
     core.info(
       `Pull request #${pr.number}: ${report.filesInPullRequest} changed files, ` +
@@ -163,19 +196,31 @@ export async function run(
     core.setOutput('files-considered', report.filesInPullRequest)
     core.setOutput('files-sent', report.filesSent)
     if (files.length === 0) {
-      core.setOutput('decision', 'nothing-to-send')
+      audit.decision = 'nothing-to-send'
       return
     }
 
     const prompt = buildPrompt(files, report, pr)
+    audit.prompt = { sha256: prompt.sha256, bytes: prompt.bytes }
+    core.setOutput('prompt-sha256', prompt.sha256)
     const choice = await chooseModel(gate, config, apiKey, pr, api, deps)
-    core.info(choice.reason)
+    note(choice.reason)
+    if (choice.budget) {
+      audit.budget = {
+        dailyBudgetUsd: config.dailyBudgetUsd,
+        ceilingUsd: Number(choice.budget.ceilingUsd.toFixed(6)),
+        paidRunsToday: choice.budget.paidRunsToday,
+        maxPaidRunsPerDay: choice.budget.maxPaidRunsPerDay,
+        allowed: choice.budget.allowed
+      }
+    }
 
+    const requested = choice.client.provider === 'mock' ? 'mock' : config.model
     let result: ModelResult | null = null
     let modelProblem = ''
     try {
       result = await choice.client.complete({
-        model: choice.client.provider === 'mock' ? 'mock' : config.model,
+        model: requested,
         instructions: prompt.instructions,
         input: prompt.input,
         schema: providerSchema(),
@@ -197,6 +242,19 @@ export async function run(
       result === null || choice.client.provider === 'mock'
         ? 0
         : costUsd(config.model, usage)
+    audit.model = {
+      provider: choice.client.provider,
+      requested,
+      returned: result?.model ?? null,
+      reasoningEffort: config.reasoningEffort,
+      status: result?.status ?? 'error',
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      reasoningTokens: usage.reasoningTokens,
+      costUsd: Number(cost.toFixed(6))
+    }
+    audit.latencyMs.model = result?.latencyMs ?? null
+    core.setOutput('cost-usd', cost.toFixed(6))
     if (result !== null) {
       core.info(
         `Model ${result.model}: ${result.status}, ${usage.inputTokens} input / ` +
@@ -225,12 +283,31 @@ export async function run(
     // Rule-based, so reported even when the model's output is unusable: an
     // attacker who breaks the model's output must not also hide the attempt.
     const injection = detectInjection(files)
+    audit.findings = {
+      valid: parsed.ok,
+      invalidReason: parsed.ok ? null : parsed.reason.slice(0, 400),
+      items: [
+        ...placed.inline.map((f) => ({
+          ...pick(f),
+          placed: 'inline' as const
+        })),
+        ...placed.general.map((f) => ({
+          ...pick(f),
+          placed: 'general' as const
+        }))
+      ]
+    }
+    audit.injection = injection.map(({ rule, path, line }) => ({
+      rule,
+      path,
+      line
+    }))
     core.info(
       `Findings: ${placed.inline.length} on diff lines, ${placed.general.length} elsewhere, ` +
         `${injection.length} possible prompt injection(s).`
     )
 
-    const decision =
+    audit.decision =
       result === null
         ? 'model-error'
         : result.status !== 'completed'
@@ -242,7 +319,6 @@ export async function run(
     // Shadow mode never posts. A mock review only posts if a rule found something.
     const hasSomethingToSay =
       injection.length > 0 || (parsed.ok && choice.client.provider !== 'mock')
-    let commentsPosted = 0
     if (gate.postComments && hasSomethingToSay) {
       const review = renderReview({
         summary: parsed.ok ? parsed.summary : null,
@@ -259,6 +335,7 @@ export async function run(
           report
         }
       })
+      audit.posting.attempted = true
       try {
         await api.postCommentReview(
           pr.number,
@@ -266,26 +343,55 @@ export async function run(
           review.body,
           review.comments
         )
-        commentsPosted = review.comments.length
+        audit.posting.commentsPosted = review.comments.length
         core.info(
-          `Posted an advisory review with ${commentsPosted} comment(s).`
+          `Posted an advisory review with ${review.comments.length} comment(s).`
         )
       } catch (error) {
+        audit.posting.error = (error as Error).message.slice(0, 400)
         core.warning(`Could not post the review: ${(error as Error).message}`)
       }
     }
-
-    core.setOutput('prompt-sha256', prompt.sha256)
-    core.setOutput('cost-usd', cost.toFixed(6))
-    core.setOutput('findings', placed.inline.length + placed.general.length)
+    core.setOutput('findings', audit.findings.items.length)
     core.setOutput('injection-findings', injection.length)
-    core.setOutput('comments-posted', commentsPosted)
-    core.setOutput('decision', decision)
   } catch (error) {
-    if (error instanceof ConfigError) {
-      core.setFailed(`Configuration error, nothing was sent: ${error.message}`)
-    } else if (error instanceof Error) {
-      core.setFailed(error.message)
+    const message = error instanceof Error ? error.message : String(error)
+    audit.decision = error instanceof ConfigError ? 'config-error' : 'error'
+    audit.reasons.push(message.slice(0, 400))
+    core.setFailed(
+      error instanceof ConfigError
+        ? `Configuration error, nothing was sent: ${message}`
+        : message
+    )
+  } finally {
+    const finished = deps.now()
+    audit.run.finishedAt = finished.toISOString()
+    audit.latencyMs.total = finished.getTime() - started.getTime()
+    core.setOutput('comments-posted', audit.posting.commentsPosted)
+    core.setOutput('decision', audit.decision)
+    try {
+      await deps.publishAudit(audit)
+    } catch (error) {
+      core.warning(
+        `Could not publish the audit record: ${(error as Error).message}`
+      )
     }
+  }
+}
+
+/** Finding metadata for the audit: no titles or rationales, which may quote code. */
+function pick(f: {
+  path: string
+  line: number
+  severity: string
+  confidence: string
+  category: string
+}) {
+  return {
+    path: f.path,
+    line: f.line,
+    severity: f.severity,
+    confidence: f.confidence,
+    category: f.category
   }
 }
