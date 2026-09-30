@@ -4,7 +4,9 @@ import { ConfigError, loadConfig } from './config.js'
 import { readEventContext, type EventContext } from './context.js'
 import { decide, parseMode } from './gate.js'
 import { createGitHubApi, type GitHubApi } from './github.js'
+import { entropyScrubber } from './pipeline/entropy.js'
 import { runPipeline, type Scrubber } from './pipeline/index.js'
+import { secretScrubber } from './pipeline/secrets.js'
 
 /** Everything `run` needs from the outside world, so tests can replace it. */
 export interface RunDependencies {
@@ -17,7 +19,8 @@ export const defaultDependencies: RunDependencies = {
   readContext: () => readEventContext(),
   createApi: (token, owner, repo) =>
     createGitHubApi(getOctokit(token), owner, repo),
-  scrubbers: []
+  // Order doesn't change the result: overlapping findings are merged.
+  scrubbers: [secretScrubber, entropyScrubber]
 }
 
 /** The main function for the action. Orchestration only; logic lives in modules. */
