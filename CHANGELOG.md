@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Workflow: pull requests now target the protected `next` integration branch and are merged by Claude Code once CI passes; Michael reviews and merges `next` into `main` (ADR 0009). CI runs on `next`; Dependabot targets `next` and skips major upgrades of `typescript` and `@types/node`.
+
 ### Added
 
 - Project scaffold from the `actions/typescript-action` template on the `node24`

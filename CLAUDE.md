@@ -25,7 +25,8 @@ If something does not fit, move it to "Next" in the README with the reason. Do n
 1. No employer or client material of any kind: code, data, schemas, prompts, infra, names.
 2. No real personal data anywhere, including fixtures. Synthetic only (Faker + SG generators).
 3. Vetted only comments. Never `APPROVE`, `REQUEST_CHANGES` or merge. Never check out or run code from a diff.
-4. Every change goes through a PR that Michael reviews and merges. Vetted reviews them too once it runs.
+4. Every change goes through a PR. Since 2026-09-30 (ADR 0009) Claude merges CI-green PRs into `next`;
+   Michael reviews and merges `next` → `main`. Vetted reviews PRs too once it runs.
 5. Money is capped: hard daily budget, mock model by default, cheapest model that works,
    no test ever calls a paid API. Whole toolkit under US$20/month.
 6. Required evidence: README (5-minute quickstart), `CONTROLS.md`, `THREAT_MODEL.md`, `EVALS.md`
@@ -56,8 +57,9 @@ If something does not fit, move it to "Next" in the README with the reason. Do n
 2. After: run `npm run all` (format, lint, test, package), update docs + `CHANGELOG.md`, and summarise
    what changed and what was deliberately left out.
 3. Keep diffs under ~400 hand-written lines; propose a split if bigger.
-4. PRs are opened from Michael's account with the `ai-drafted` label. Branch protection requires a PR and green
-   checks (0 approvals, because GitHub blocks self-approval). Michael merges.
+4. PRs are opened from Michael's account with the `ai-drafted` label and target `next`. Claude squash-merges
+   them once required checks pass and adds `ai-merged` (ADR 0009). Only Michael merges into `main`; releases
+   are tagged from `main` after his merge. Never push to `main`.
 5. Every PR description ends with **"If asked in an interview"**: 3-4 plain sentences on why the change
    exists and which alternative was rejected.
 6. Significant decisions go in `docs/adr/NNNN-title.md` (Context, Options, Decision, Consequences) with
