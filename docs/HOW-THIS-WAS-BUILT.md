@@ -23,9 +23,16 @@ Vetted is built with AI assistance (Claude Code) under the same kind of controls
 | 2026-09-28 | Default model `gpt-5-nano`, the cheapest option                            | `gpt-6-luna`, the newer small model; the cheaper model stays in the evaluation as the comparison                   | ADR 0003 |
 | 2026-09-30 | Michael reviews and merges every pull request (the brief's rule, ADR 0008) | Claude Code merges CI-green pull requests into `next`; Michael reviews and merges `next` → `main` at milestone end | ADR 0009 |
 
+## How facts and code were checked
+
+- **Facts after the model's training cutoff or about regulation** were researched from primary sources and graded: the frameworks in `CONTROLS.md` (read on 2026-09-30, with page and section references), OpenAI's API and pricing for `gpt-6-luna`, the Actions runtime change to Node 24, and gitleaks' source code at v8.30.1.
+- **Ported code was checked against the original**: Vetted's gitleaks port against the real gitleaks binary (0 misses on 3,658 test strings), and Vetted's sg-pii-rules implementation against the shared conformance suite (184/184).
+- **Tests were checked for teeth**: code was broken on purpose (M-series table, word boundaries, the `+65` boundary, scrubbers removed, deny list emptied) to prove each suite fails when it should. Files were always restored from a backup copy, never with `git checkout` (see 2026-09-28).
+- **CodeQL and the canary suite are required checks**, and the merge helper refuses to merge if any check failed, required or not.
+
 ## Exceptions
 
-- The very first commit (`LICENSE`, a README stub, `.gitignore`) was pushed directly to `main`, because branch protection needs the branch to exist first. Every later change goes through a pull request.
+- The very first commit in each repository (`LICENSE`, a README stub, `.gitignore`) was pushed directly to `main`, because branch protection needs the branch to exist first: vetted, sg-pii-rules, makoydev.github.io and discreet. Every later change went through a pull request.
 
 ## What the AI got wrong, and how it was caught
 
