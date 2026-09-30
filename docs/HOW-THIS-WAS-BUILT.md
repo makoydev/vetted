@@ -4,23 +4,24 @@ Vetted is built with AI assistance (Claude Code) under the same kind of controls
 
 ## Who does what
 
-- **Michael Mendoza** sets scope and priorities, answers design questions, reviews every pull request, edits and confirms every ADR, and merges. He handles all credentials himself.
-- **Claude Code** (Claude Opus 5.5) drafts plans, code, tests and documentation, opens pull requests from Michael's account with the `ai-drafted` label, and adds a `Co-Authored-By` trailer to every commit.
+- **Michael Mendoza** sets scope and priorities, answers design questions, edits and confirms every ADR, and is the only person who merges into `main`. He handles all credentials himself.
+- **Claude Code** (Claude Opus 5.5) drafts plans, code, tests and documentation, opens pull requests from Michael's account with the `ai-drafted` label, and adds a `Co-Authored-By` trailer to every commit. Since 2026-09-30 it also merges its own CI-green pull requests into the `next` integration branch, labelled `ai-merged` (ADR 0009).
 
 ## Guardrails
 
 1. **A written brief** (kept outside the repo because it contains private context) and `CLAUDE.md`, which distils it: scope, non-negotiables, conventions.
 2. **Plan approval before code.** The Milestone 1 plan (`docs/M1-PLAN.md`) was approved before any product code was written.
-3. **Pull requests only.** `main` is protected: pull request required, CI checks required (lint and test, dist check, running the action, CodeQL), conversations resolved, linear history, applied to admins. GitHub does not allow self-approval, so zero approvals are required and review is enforced by process (ADR 0008).
+3. **Pull requests only.** `main` and `next` are protected: pull request required, CI checks required (lint and test, dist check, running the action, CodeQL), conversations resolved, linear history, applied to admins. GitHub does not allow self-approval, so zero approvals are required and review is enforced by process (ADR 0008). Until 2026-09-29 Michael reviewed and merged each pull request; from 2026-09-30 he reviews the batch in `next` before merging it into `main` (ADR 0009).
 4. **Explain-back.** Every pull request ends with "If asked in an interview".
 5. **Decisions recorded** as ADRs marked "awaiting Michael's review" until he confirms them.
 6. **Tests in CI**, and from issue #6 onward Vetted reviews its own pull requests.
 
 ## Decisions changed on human review
 
-| Date       | Proposed by Claude Code                         | Changed by Michael to                                                                            | Where    |
-| ---------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------- |
-| 2026-09-28 | Default model `gpt-5-nano`, the cheapest option | `gpt-6-luna`, the newer small model; the cheaper model stays in the evaluation as the comparison | ADR 0003 |
+| Date       | Proposed by Claude Code                                                    | Changed by Michael to                                                                                              | Where    |
+| ---------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
+| 2026-09-28 | Default model `gpt-5-nano`, the cheapest option                            | `gpt-6-luna`, the newer small model; the cheaper model stays in the evaluation as the comparison                   | ADR 0003 |
+| 2026-09-30 | Michael reviews and merges every pull request (the brief's rule, ADR 0008) | Claude Code merges CI-green pull requests into `next`; Michael reviews and merges `next` → `main` at milestone end | ADR 0009 |
 
 ## Exceptions
 
