@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Vetted AI Code Review
-        uses: makoydev/vetted@f6ae25e2c71b7444af3a863adcc8296df544e52b # next, 2026-09-30 (#21)
+        uses: makoydev/vetted@2ae958e0fbf14fb9c74c2423059a49762927a192 # v0.1.0
         with:
           # Opt-in since #9: add the `ai-review` label to get comments.
           mode: opt-in
