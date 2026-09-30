@@ -14,6 +14,7 @@ export function fakeGitHubApi(
     ),
     countWorkflowRunsSince: jest.fn<GitHubApi['countWorkflowRunsSince']>(
       async () => runsToday
-    )
+    ),
+    postCommentReview: jest.fn<GitHubApi['postCommentReview']>(async () => 1)
   }
 }

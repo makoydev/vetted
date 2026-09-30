@@ -47,6 +47,12 @@ outputs:
     description: SHA-256 of exactly what was sent to the model.
   cost-usd:
     description: Estimated cost of this run's model call in US dollars (0 for the mock).
+  findings:
+    description: Number of AI findings that passed schema validation.
+  injection-findings:
+    description: Number of possible prompt injections found by rules.
+  comments-posted:
+    description: Number of review comments posted (always 0 in shadow mode).
 
 runs:
   using: node24
