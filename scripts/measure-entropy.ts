@@ -2,7 +2,7 @@
 // threshold, the share of random secrets caught and the false-positive rate
 // on real third-party code in node_modules. Prints no token values.
 // Run with: npm run measure:entropy
-import { randomBytes } from 'node:crypto'
+import { randomInt } from 'node:crypto'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -22,8 +22,10 @@ const ALPHABETS: Record<string, string> = {
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
   'lower+digits': 'abcdefghijklmnopqrstuvwxyz0123456789'
 }
+// randomInt is unbiased; `byte % alphabet.length` would favour some
+// characters whenever the alphabet size doesn't divide 256.
 const random = (alphabet: string, n: number) =>
-  [...randomBytes(n)].map((b) => alphabet[b % alphabet.length]).join('')
+  Array.from({ length: n }, () => alphabet[randomInt(alphabet.length)]).join('')
 
 console.log('Share of 2,000 random secrets caught, by threshold:')
 for (const [name, alphabet] of Object.entries(ALPHABETS)) {
