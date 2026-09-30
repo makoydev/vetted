@@ -35515,21 +35515,21 @@ function requireBoolSchema () {
 
 var dataType = {};
 
-var rules$1 = {};
+var rules$2 = {};
 
 var hasRequiredRules;
 
 function requireRules () {
-	if (hasRequiredRules) return rules$1;
+	if (hasRequiredRules) return rules$2;
 	hasRequiredRules = 1;
-	Object.defineProperty(rules$1, "__esModule", { value: true });
-	rules$1.getRules = rules$1.isJSONType = void 0;
+	Object.defineProperty(rules$2, "__esModule", { value: true });
+	rules$2.getRules = rules$2.isJSONType = void 0;
 	const _jsonTypes = ["string", "number", "integer", "boolean", "null", "object", "array"];
 	const jsonTypes = new Set(_jsonTypes);
 	function isJSONType(x) {
 	    return typeof x == "string" && jsonTypes.has(x);
 	}
-	rules$1.isJSONType = isJSONType;
+	rules$2.isJSONType = isJSONType;
 	function getRules() {
 	    const groups = {
 	        number: { type: "number", rules: [] },
@@ -35545,9 +35545,9 @@ function requireRules () {
 	        keywords: {},
 	    };
 	}
-	rules$1.getRules = getRules;
+	rules$2.getRules = getRules;
 	
-	return rules$1;
+	return rules$2;
 }
 
 var applicability = {};
@@ -55623,7 +55623,7 @@ var globalAllowlists = [
 		]
 	}
 ];
-var rules = [
+var rules$1 = [
 	{
 		id: "1password-secret-key",
 		description: "Uncovered a possible 1Password secret key, potentially compromising access to secrets in vaults.",
@@ -60238,7 +60238,7 @@ var rules = [
 ];
 var vendored = {
 	globalAllowlists: globalAllowlists,
-	rules: rules
+	rules: rules$1
 };
 
 /** D3: known-wrong upstream regexes and what they were meant to say. */
@@ -63222,11 +63222,148 @@ function increment(counts, label) {
     counts[label] = (counts[label] ?? 0) + 1;
 }
 
+var detectors = [
+	{
+		id: "sg_nric_fin",
+		entity: "NRIC",
+		description: "Singapore NRIC and FIN numbers: prefix S, T, F, G or M, seven digits, and a check letter that must pass the checksum. Case-insensitive.",
+		pattern: "(?i)\\b[STFGM]\\d{7}[A-Z]\\b",
+		validator: "sg_nric_fin_checksum",
+		sources: [
+			"https://www.ica.gov.sg/news-and-publications/newsroom/media-release/new-m-fin-series-to-be-introduced-from-1-january-2022",
+			"https://www.pdpc.gov.sg/organisations/regulations-decisions/regulatory-guidance/advisory-guidelines-on-the-personal-data-protection-act-for-nric-and-other-national-identification-numbers",
+			"https://github.com/makoydev/sg-pii-rules/blob/main/VALIDATORS.md#sg_nric_fin_checksum"
+		]
+	},
+	{
+		id: "sg_nric_fin_like",
+		entity: "NRIC_LIKE",
+		description: "NRIC/FIN shape with a check letter that fails the checksum: a mistyped NRIC or an NRIC-shaped look-alike such as an order number. Lower confidence than NRIC; each consumer decides how to treat it (ADR 0006).",
+		pattern: "(?i)\\b[STFGM]\\d{7}[A-Z]\\b",
+		validator: "sg_nric_fin_checksum_invalid",
+		sources: [
+			"https://github.com/makoydev/sg-pii-rules/blob/main/docs/adr/0006-nric-checksum-precision-over-recall.md"
+		]
+	},
+	{
+		id: "sg_phone",
+		entity: "PHONE",
+		description: "Singapore phone numbers: eight digits starting 3 (internet telephony), 6 (fixed line), 8 or 9 (mobile) per the IMDA National Numbering Plan, optionally split 4-4 by a space or hyphen, optionally preceded by +65, (65), (+65), 0065 or 65.",
+		pattern: "(?:(?:\\+65|\\(\\+?65\\)|\\b0065|\\b65)[ -]?|\\b)[3689]\\d{3}[ -]?\\d{4}\\b",
+		sources: [
+			"https://www.imda.gov.sg/regulations-and-licensing-listing/numbering/national-numbering-plan-and-allocation-process",
+			"https://www.imda.gov.sg/-/media/imda/files/regulation-licensing-and-consultations/frameworks-and-policies/numbering/national-numbering-plan-and-allocation-process/imda-national-numbering-plan.pdf"
+		]
+	},
+	{
+		id: "email",
+		entity: "EMAIL",
+		description: "Email addresses: a local part of letters, digits and . _ % + -, an @, and a domain whose last label is two or more letters. Deliberately permissive: domains may start with a digit.",
+		pattern: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}\\b",
+		sources: [
+			"https://www.rfc-editor.org/rfc/rfc5322",
+			"https://www.rfc-editor.org/rfc/rfc2606"
+		]
+	}
+];
+var rules = {
+	detectors: detectors
+};
+
+// NRIC/FIN check letter (sg-pii-rules VALIDATORS.md). The algorithm was never
+// officially published; it is community-derived and consistent across three
+// independent implementations.
+const WEIGHTS = [2, 7, 6, 5, 4, 3, 2];
+const OFFSETS = { S: 0, T: 4, F: 0, G: 4, M: 3 };
+const LETTERS = {
+    S: 'JZIHGFEDCBA',
+    T: 'JZIHGFEDCBA',
+    F: 'XWUTRQPNMLK',
+    G: 'XWUTRQPNMLK',
+    M: 'XWUTRQPNJLK'
+};
+const NRIC_SHAPE = /^([STFGM])(\d{7})([A-Z])$/;
+function hasValidCheckLetter(value) {
+    const match = NRIC_SHAPE.exec(value.toUpperCase());
+    if (match === null)
+        return false;
+    const [, prefix, digits, letter] = match;
+    const sum = WEIGHTS.reduce((total, weight, i) => total + weight * Number(digits[i]), OFFSETS[prefix]);
+    return LETTERS[prefix][sum % 11] === letter;
+}
+const VALIDATORS = {
+    sg_nric_fin_checksum: hasValidCheckLetter,
+    sg_nric_fin_checksum_invalid: (value) => NRIC_SHAPE.test(value.toUpperCase()) && !hasValidCheckLetter(value)
+};
+const DETECTORS = rules.detectors.map((spec, order) => {
+    if (spec.validator !== undefined && !(spec.validator in VALIDATORS)) {
+        // SPEC.md §3: an unknown validator is a load error, never a silent pass.
+        throw new Error(`Unknown validator ${spec.validator} in sg-pii-rules`);
+    }
+    return {
+        entity: spec.entity,
+        order,
+        pattern: RE2JS.compile(spec.pattern),
+        validate: spec.validator === undefined ? undefined : VALIDATORS[spec.validator]
+    };
+});
+/** SPEC.md §4: match, validate, then resolve overlaps (longest, then file order). */
+function detectPii(text) {
+    const candidates = [];
+    for (const detector of DETECTORS) {
+        const matcher = detector.pattern.matcher(text);
+        while (matcher.find()) {
+            const value = matcher.group() ?? '';
+            if (value === '' || (detector.validate && !detector.validate(value)))
+                continue;
+            candidates.push({
+                entity: detector.entity,
+                value,
+                start: matcher.start(),
+                end: matcher.end(),
+                order: detector.order
+            });
+        }
+    }
+    candidates.sort((a, b) => a.start - b.start ||
+        b.end - b.start - (a.end - a.start) ||
+        a.order - b.order);
+    const kept = [];
+    for (const candidate of candidates) {
+        const last = kept.at(-1);
+        if (last === undefined || candidate.start >= last.end) {
+            kept.push(candidate);
+        }
+        else {
+            const length = candidate.end - candidate.start;
+            const lastLength = last.end - last.start;
+            if (length > lastLength ||
+                (length === lastLength && candidate.order < last.order)) {
+                kept[kept.length - 1] = candidate;
+            }
+        }
+    }
+    return kept.map(({ entity, value, start, end }) => ({
+        entity,
+        value,
+        start,
+        end
+    }));
+}
+const piiScrubber = {
+    kind: 'pii',
+    find: (text) => detectPii(text).map((m) => ({
+        start: m.start,
+        end: m.end,
+        label: m.entity
+    }))
+};
+
 const defaultDependencies = {
     readContext: () => readEventContext(),
     createApi: (token, owner, repo) => createGitHubApi(getOctokit(token), owner, repo),
     // Order doesn't change the result: overlapping findings are merged.
-    scrubbers: [secretScrubber, entropyScrubber]
+    scrubbers: [secretScrubber, entropyScrubber, piiScrubber]
 };
 /** The main function for the action. Orchestration only; logic lives in modules. */
 async function run(deps = defaultDependencies) {

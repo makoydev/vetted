@@ -6,6 +6,7 @@ import { decide, parseMode } from './gate.js'
 import { createGitHubApi, type GitHubApi } from './github.js'
 import { entropyScrubber } from './pipeline/entropy.js'
 import { runPipeline, type Scrubber } from './pipeline/index.js'
+import { piiScrubber } from './pipeline/pii.js'
 import { secretScrubber } from './pipeline/secrets.js'
 
 /** Everything `run` needs from the outside world, so tests can replace it. */
@@ -20,7 +21,7 @@ export const defaultDependencies: RunDependencies = {
   createApi: (token, owner, repo) =>
     createGitHubApi(getOctokit(token), owner, repo),
   // Order doesn't change the result: overlapping findings are merged.
-  scrubbers: [secretScrubber, entropyScrubber]
+  scrubbers: [secretScrubber, entropyScrubber, piiScrubber]
 }
 
 /** The main function for the action. Orchestration only; logic lives in modules. */
