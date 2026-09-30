@@ -17,6 +17,16 @@ export interface GitHubApi {
   listChangedFiles(pullNumber: number): Promise<ChangedFile[]>
   /** Returns a file's text at a commit, or null if it does not exist. */
   getFileText(path: string, ref: string): Promise<string | null>
+  /**
+   * Counts runs of the workflow that started `runId`, created since
+   * `sinceIso`, excluding `runId` itself and runs whose jobs were all
+   * skipped. Stops counting at `stopAt`. Needs `actions: read`.
+   */
+  countWorkflowRunsSince(
+    runId: number,
+    sinceIso: string,
+    stopAt: number
+  ): Promise<number>
 }
 
 function isNotFound(error: unknown): boolean {
@@ -51,6 +61,32 @@ export function createGitHubApi(
         deletions: f.deletions,
         patch: f.patch
       }))
+    },
+
+    async countWorkflowRunsSince(runId, sinceIso, stopAt) {
+      const { data: current } = await octokit.rest.actions.getWorkflowRun({
+        owner,
+        repo,
+        run_id: runId
+      })
+      let count = 0
+      for (let page = 1; page <= 10; page++) {
+        const { data } = await octokit.rest.actions.listWorkflowRuns({
+          owner,
+          repo,
+          workflow_id: current.workflow_id,
+          created: `>=${sinceIso}`,
+          per_page: 100,
+          page
+        })
+        for (const run of data.workflow_runs) {
+          // Cancelled runs may have called the model before stopping: count them.
+          if (run.id === runId || run.conclusion === 'skipped') continue
+          if (++count >= stopAt) return count
+        }
+        if (data.workflow_runs.length < 100) break
+      }
+      return count
     },
 
     async getFileText(path, ref) {
