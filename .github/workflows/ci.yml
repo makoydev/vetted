@@ -83,6 +83,11 @@ jobs:
   run-action:
     name: Run action
     runs-on: ubuntu-latest
+    # Vetted reads the pull request's files through the API. No write access
+    # and no API key here, so it runs in shadow mode on the mock.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
