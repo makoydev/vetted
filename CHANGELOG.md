@@ -12,6 +12,8 @@ All notable changes to this project are documented here. The format follows
 - Mode gating: `shadow` runs on every pull request and never comments; `opt-in` runs only with the `ai-review` label and ignores unrelated label events; fork pull requests and runs without an API key use the mock model.
 - Changed files are read through the GitHub REST API; Vetted never checks out the pull request's code. Only `pull_request` events are supported; `pull_request_target` is refused.
 - Action inputs `github-token`, `openai-api-key` (masked in logs) and `config-path`.
+- Pre-send pipeline, first part ([#4](https://github.com/makoydev/vetted/issues/4)): a default deny list that config can extend or narrow but never re-open (`.env*`, `secrets/**`, keys and certificates, credential files, lockfiles, generated and vendored code, binaries); removed files and files without a text diff are skipped; a file cap and a character cap skip whole files and list them, never truncating one silently.
+- Diff handling: each file's patch is parsed into numbered lines; the model sees new-file line numbers; redaction keeps the line structure intact, including for secrets that span several lines.
 
 ### Changed
 

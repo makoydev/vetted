@@ -40,6 +40,8 @@ outputs:
     description: What Vetted did, for example `skipped` or `reviewed`.
   files-considered:
     description: Number of changed files in the pull request.
+  files-sent:
+    description: Number of files that passed the path rules and size caps.
 
 runs:
   using: node24

@@ -29,7 +29,7 @@ function inputs(values: Record<string, string>) {
 }
 
 function deps(event: EventContext, api = fakeGitHubApi()) {
-  return { readContext: () => event, createApi: () => api }
+  return { readContext: () => event, createApi: () => api, scrubbers: [] }
 }
 
 describe('run', () => {
@@ -52,6 +52,7 @@ describe('run', () => {
     await run(deps({ kind: 'pull_request', pr }, api))
 
     expect(api.listChangedFiles).toHaveBeenCalledWith(7)
+    expect(core.setOutput).toHaveBeenCalledWith('files-sent', 1)
     expect(core.setOutput).toHaveBeenCalledWith('decision', 'reviewed')
     expect(core.setFailed).not.toHaveBeenCalled()
   })
