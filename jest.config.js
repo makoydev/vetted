@@ -20,7 +20,7 @@ export default {
   //   }
   // },
   extensionsToTreatAsEsm: ['.ts'],
-  moduleFileExtensions: ['ts', 'js'],
+  moduleFileExtensions: ['ts', 'js', 'json'],
   preset: 'ts-jest',
   reporters: ['default'],
   resolver: 'ts-jest-resolver',
