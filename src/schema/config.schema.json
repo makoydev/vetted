@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/makoydev/vetted/src/schema/config.schema.json",
+  "title": "Vetted configuration (.vetted.yml)",
+  "description": "Read from the pull request's base commit, so a pull request cannot change its own review.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "model": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+    },
+    "reasoning_effort": { "enum": ["none", "low", "medium", "high"] },
+    "daily_budget_usd": { "type": "number", "minimum": 0, "maximum": 5 },
+    "max_output_tokens": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 32000
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_files": { "type": "integer", "minimum": 1, "maximum": 300 },
+        "max_diff_chars": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 200000
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "deny": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      }
+    },
+    "review_label": { "type": "string", "minLength": 1, "maxLength": 50 }
+  }
+}

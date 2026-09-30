@@ -16,10 +16,30 @@ inputs:
       comments. `opt-in` reviews pull requests labelled `ai-review`.
     required: false
     default: shadow
+  github-token:
+    description: >-
+      Token used to read the pull request and post comments. Needs
+      `contents: read`, `pull-requests: write` and `actions: read`.
+    required: false
+    default: ${{ github.token }}
+  openai-api-key:
+    description: >-
+      OpenAI API key. When empty (for example on fork pull requests, which
+      get no secrets), Vetted uses its free mock model.
+    required: false
+    default: ''
+  config-path:
+    description: Path of the config file, read from the pull request's base commit.
+    required: false
+    default: .vetted.yml
 
 outputs:
   mode:
     description: The mode Vetted ran in.
+  decision:
+    description: What Vetted did, for example `skipped` or `reviewed`.
+  files-considered:
+    description: Number of changed files in the pull request.
 
 runs:
   using: node24
