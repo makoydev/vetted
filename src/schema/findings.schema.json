@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/makoydev/vetted/src/schema/findings.schema.json",
+  "title": "Vetted findings",
+  "description": "The only shape of model output Vetted will post. Anything else is discarded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "findings"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Two or three sentences on the change and the main risks, if any.",
+      "maxLength": 600
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "severity",
+          "confidence",
+          "category",
+          "title",
+          "rationale"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The file path exactly as shown after FILE:.",
+            "maxLength": 300
+          },
+          "line": {
+            "type": "integer",
+            "description": "A line number shown in the diff for that file (an added or unchanged line).",
+            "minimum": 1
+          },
+          "severity": { "type": "string", "enum": ["high", "medium", "low"] },
+          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+          "category": {
+            "type": "string",
+            "enum": [
+              "bug",
+              "security",
+              "data-protection",
+              "error-handling",
+              "performance",
+              "maintainability"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "One line naming the problem.",
+            "maxLength": 120
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why it is a problem and what a fix could look like.",
+            "maxLength": 800
+          }
+        }
+      }
+    }
+  }
+}

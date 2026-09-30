@@ -35,7 +35,8 @@ export interface ScrubReport {
   /** Replacements per label, for example `{ "SECRET:aws-access-token": 1 }`. */
   secrets: Record<string, number>
   pii: Record<string, number>
-  charsSent: number
+  /** UTF-8 bytes of rendered diff sent, including separators. */
+  bytesSent: number
 }
 
 export interface PipelineResult {
@@ -43,7 +44,7 @@ export interface PipelineResult {
   report: ScrubReport
 }
 
-type Limits = Pick<VettedConfig, 'maxFiles' | 'maxDiffChars' | 'paths'>
+type Limits = Pick<VettedConfig, 'maxFiles' | 'maxDiffBytes' | 'paths'>
 
 /**
  * The pre-send pipeline: path rules, then scrubbing, then the size and file
@@ -62,7 +63,7 @@ export function runPipeline(
     filesSkipped: [],
     secrets: {},
     pii: {},
-    charsSent: 0
+    bytesSent: 0
   }
   const files: PreparedFile[] = []
 
@@ -88,7 +89,7 @@ export function runPipeline(
       continue
     }
     // A file this large can't fit even after scrubbing; don't spend time on it.
-    if (file.patch.length > config.maxDiffChars * 2) {
+    if (Buffer.byteLength(file.patch) > config.maxDiffBytes * 2) {
       skip('size-cap')
       continue
     }
@@ -110,7 +111,10 @@ export function runPipeline(
     const lines = applySpans(parsed, spans)
     const rendered = renderFile(file.path, file.status, lines)
 
-    if (report.charsSent + rendered.length > config.maxDiffChars) {
+    // Measured in UTF-8 bytes: a token is never smaller than a byte, so this
+    // also bounds the input tokens, and with them the cost (ADR 0004).
+    const renderedBytes = Buffer.byteLength(rendered)
+    if (report.bytesSent + renderedBytes > config.maxDiffBytes) {
       skip('size-cap')
       continue
     }
@@ -122,7 +126,7 @@ export function runPipeline(
       commentable: commentableLines(lines),
       rendered
     })
-    report.charsSent += rendered.length + 1
+    report.bytesSent += renderedBytes + 2
     for (const kind of ['secrets', 'pii'] as const) {
       for (const [label, n] of Object.entries(fileCounts[kind])) {
         report[kind][label] = (report[kind][label] ?? 0) + n
