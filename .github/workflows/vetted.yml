@@ -21,5 +21,6 @@ jobs:
       - name: Vetted AI Code Review
         uses: makoydev/vetted@f6ae25e2c71b7444af3a863adcc8296df544e52b # next, 2026-09-30 (#21)
         with:
-          mode: shadow
+          # Opt-in since #9: add the `ai-review` label to get comments.
+          mode: opt-in
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}

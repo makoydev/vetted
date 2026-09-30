@@ -1,7 +1,7 @@
 {
   "name": "vetted",
   "description": "Governed, advisory AI code review for GitHub Actions",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "author": "Michael Mendoza",
   "type": "module",
   "private": true,
