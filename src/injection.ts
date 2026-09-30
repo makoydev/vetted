@@ -66,10 +66,30 @@ export interface InjectionFinding {
   excerpt: string
 }
 
-/** Scans added lines of the files being sent. Context lines already existed. */
+/**
+ * Scans the file names and added lines of the files being sent. Context
+ * lines already existed before this pull request.
+ */
 export function detectInjection(files: PreparedFile[]): InjectionFinding[] {
   const found: InjectionFinding[] = []
   for (const file of files) {
+    // A file name is sent to the model too. Report hits on its first
+    // added line, where a review comment can attach.
+    const anchor = file.lines.find((l) => l.kind === 'add')?.newLine
+    if (anchor !== undefined) {
+      for (const r of INJECTION_RULES) {
+        const matcher = r.pattern.matcher(file.path)
+        if (!matcher.find()) continue
+        found.push({
+          rule: r.id,
+          severity: r.severity,
+          title: `${r.title} (in the file name)`,
+          path: file.path,
+          line: anchor,
+          excerpt: printable(matcher.group() ?? '')
+        })
+      }
+    }
     for (const line of file.lines) {
       if (line.kind !== 'add' || line.newLine === undefined) continue
       for (const r of INJECTION_RULES) {

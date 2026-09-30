@@ -26,7 +26,8 @@ export default {
   resolver: 'ts-jest-resolver',
   testEnvironment: 'node',
   testMatch: ['**/*.test.ts'],
-  testPathIgnorePatterns: ['/dist/', '/node_modules/'],
+  // The canary suite runs on its own: `npm run canary`.
+  testPathIgnorePatterns: ['/dist/', '/node_modules/', '/__tests__/canary/'],
   transform: {
     '^.+\\.ts$': [
       'ts-jest',

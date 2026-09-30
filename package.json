@@ -28,12 +28,14 @@
     "lint": "npx eslint .",
     "package": "npx rimraf ./dist && npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "test": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest",
-    "all": "npm run format:write && npm run lint && npm run test && npm run package",
+    "all": "npm run format:write && npm run lint && npm run test && npm run canary && npm run package",
     "vendor:gitleaks": "node scripts/vendor-gitleaks.ts",
     "measure:entropy": "node scripts/measure-entropy.ts",
-    "parity:gitleaks": "node scripts/parity-gitleaks.ts"
+    "parity:gitleaks": "node scripts/parity-gitleaks.ts",
+    "canary": "NODE_OPTIONS=--experimental-vm-modules NODE_NO_WARNINGS=1 npx jest --coverage=false --testPathIgnorePatterns /dist/ /node_modules/ --testPathPatterns __tests__/canary"
   },
   "dependencies": {
+    "@actions/artifact": "6.2.1",
     "@actions/core": "3.0.1",
     "@actions/github": "9.1.1",
     "ajv": "8.20.0",

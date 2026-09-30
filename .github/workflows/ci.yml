@@ -42,6 +42,51 @@ jobs:
       - name: Test
         run: npm run ci-test
 
+  canary:
+    name: Canary suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Synthetic pull requests full of fake secrets, fake Singapore personal
+      # data and injection payloads; fails if any canary value reaches the
+      # model request, logs, audit record or comments.
+      - name: Run the canary suite
+        run: npm run canary
+        env:
+          CANARY_REPORT: canary-report.json
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo '### Canary suite'
+            echo
+            echo '```json'
+            cat canary-report.json 2>/dev/null || echo '{"error": "no report"}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the canary report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: canary-report
+          path: canary-report.json
+          if-no-files-found: ignore
+
   check-dist:
     name: Check dist
     runs-on: ubuntu-latest

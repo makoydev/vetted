@@ -8,6 +8,7 @@ import * as core from '../__fixtures__/core.js'
 import { fakeGitHubApi } from '../__fixtures__/github-api.js'
 import type { EventContext, PullRequestContext } from '../src/context.js'
 import type { ChangedFile } from '../src/github.js'
+import type { AuditRecord } from '../src/audit.js'
 import { ModelError } from '../src/model/client.js'
 import { MockModel } from '../src/model/mock.js'
 
@@ -15,6 +16,7 @@ jest.unstable_mockModule('@actions/core', () => core)
 
 const { run } = await import('../src/main.js')
 const { secretScrubber } = await import('../src/pipeline/secrets.js')
+const { assertValidAudit } = await import('../src/audit.js')
 
 const pr: PullRequestContext = {
   owner: 'octo',
@@ -60,7 +62,11 @@ function setup(
     provider: 'openai' as const,
     complete: paid.complete.bind(paid)
   }))
+  const audits: AuditRecord[] = []
   const deps = {
+    publishAudit: jest.fn(async (record: AuditRecord) => {
+      audits.push(structuredClone(record))
+    }),
     readContext: () => options.event ?? { kind: 'pull_request' as const, pr },
     createApi: () => api,
     scrubbers: [secretScrubber],
@@ -68,7 +74,7 @@ function setup(
     createMock: () => mock,
     now: () => new Date('2026-09-30T10:00:00Z')
   }
-  return { api, mock, paid, createModel, deps }
+  return { api, mock, paid, createModel, deps, audits }
 }
 
 const output = (name: string) =>
@@ -372,6 +378,109 @@ describe('run', () => {
       )
       expect(core.setFailed).not.toHaveBeenCalled()
       expect(output('comments-posted')).toBe(0)
+    })
+  })
+
+  describe('audit record', () => {
+    it('is written for a review, matches its schema, and holds no diff text', async () => {
+      inputs({ mode: 'shadow' })
+      const { deps, audits } = setup()
+
+      await run(deps)
+
+      expect(audits).toHaveLength(1)
+      const [record] = audits
+      expect(() => assertValidAudit(record)).not.toThrow()
+      expect(record).toMatchObject({
+        decision: 'reviewed',
+        mode: 'shadow',
+        run: {
+          repository: 'octo/app',
+          pullRequest: 7,
+          headSha: 'head-sha',
+          runId: 99
+        },
+        model: { provider: 'mock', costUsd: 0 },
+        rules: { gitleaks: 'v8.30.1', sgPiiRules: '0.1.0' },
+        scrub: { filesInPullRequest: 1, filesSent: 1 }
+      })
+      expect(record.prompt?.sha256).toMatch(/^[0-9a-f]{64}$/)
+      expect(JSON.stringify(record)).not.toContain('const a = 1')
+    })
+
+    // Options are built inside each test: resetAllMocks clears fakes made earlier.
+    it.each([
+      [
+        'skipped (opt-in without label)',
+        { mode: 'opt-in' },
+        () => ({}),
+        'skipped'
+      ],
+      [
+        'unsupported event',
+        { mode: 'shadow' },
+        () => ({ event: { kind: 'unsupported' as const, eventName: 'push' } }),
+        'skipped'
+      ],
+      [
+        'nothing to send',
+        { mode: 'shadow' },
+        () => ({
+          api: fakeGitHubApi([
+            {
+              path: '.env',
+              status: 'added',
+              additions: 1,
+              deletions: 0,
+              patch: '+X=1'
+            }
+          ])
+        }),
+        'nothing-to-send'
+      ],
+      [
+        'invalid config',
+        { mode: 'shadow' },
+        () => ({
+          api: fakeGitHubApi(changed, { '.vetted.yml@base-sha': 'modle: typo' })
+        }),
+        'config-error'
+      ]
+    ])('is written even when %s', async (_, inputValues, options, decision) => {
+      inputs(inputValues as Record<string, string>)
+      const { deps, audits } = setup(options() as never)
+
+      await run(deps)
+
+      expect(audits).toHaveLength(1)
+      expect(audits[0].decision).toBe(decision)
+      expect(() => assertValidAudit(audits[0])).not.toThrow()
+    })
+
+    it('records the budget state when the paid model is considered', async () => {
+      inputs({ mode: 'shadow', 'openai-api-key': 'k' })
+      const { deps, audits } = setup({ api: fakeGitHubApi(changed, {}, 2) })
+
+      await run(deps)
+
+      expect(audits[0].budget).toMatchObject({
+        paidRunsToday: 2,
+        allowed: true,
+        dailyBudgetUsd: 0.2
+      })
+    })
+
+    it('does not fail the step when the audit cannot be published', async () => {
+      inputs({ mode: 'shadow' })
+      const { deps } = setup()
+      deps.publishAudit.mockRejectedValue(new Error('no artifact service'))
+
+      await run(deps)
+
+      expect(core.setFailed).not.toHaveBeenCalled()
+      expect(core.warning).toHaveBeenCalledWith(
+        expect.stringMatching(/Could not publish the audit record/)
+      )
     })
   })
 })

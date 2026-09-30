@@ -98,6 +98,9 @@ const GLOBAL_ALLOWLISTS = (vendored.globalAllowlists as AllowlistSpec[]).map(
 /** Number of gitleaks rules applied to text. */
 export const RULE_COUNT = RULES.length
 
+/** The gitleaks release the rules come from, for the audit record. */
+export const GITLEAKS_VERSION = (vendored.source as { tag: string }).tag
+
 /**
  * Shannon entropy exactly as gitleaks computes it: characters are counted
  * as code points but divided by the UTF-8 byte length.

@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/makoydev/vetted/src/schema/audit.schema.json",
+  "title": "Vetted audit record",
+  "description": "One record per run. Contains counts, hashes and metadata only: never diff text, prompt text or model prose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "vettedVersion",
+    "run",
+    "mode",
+    "decision",
+    "reasons",
+    "config",
+    "rules",
+    "prompt",
+    "model",
+    "budget",
+    "scrub",
+    "findings",
+    "injection",
+    "posting",
+    "latencyMs"
+  ],
+  "definitions": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    }
+  },
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "vettedVersion": { "type": "string" },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "pullRequest",
+        "headSha",
+        "baseSha",
+        "runId",
+        "runAttempt",
+        "action",
+        "startedAt",
+        "finishedAt"
+      ],
+      "properties": {
+        "repository": { "type": ["string", "null"] },
+        "pullRequest": { "type": ["integer", "null"] },
+        "headSha": { "type": ["string", "null"] },
+        "baseSha": { "type": ["string", "null"] },
+        "runId": { "type": ["integer", "null"] },
+        "runAttempt": { "type": ["integer", "null"] },
+        "action": { "type": ["string", "null"] },
+        "startedAt": { "type": "string" },
+        "finishedAt": { "type": "string" }
+      }
+    },
+    "mode": { "type": ["string", "null"] },
+    "decision": { "type": "string" },
+    "reasons": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 400 }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "sha256"],
+      "properties": {
+        "source": { "type": ["string", "null"] },
+        "sha256": { "type": ["string", "null"] }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gitleaks", "sgPiiRules"],
+      "properties": {
+        "gitleaks": { "type": "string" },
+        "sgPiiRules": { "type": "string" }
+      }
+    },
+    "prompt": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["sha256", "bytes"],
+      "properties": {
+        "sha256": { "type": "string" },
+        "bytes": { "type": "integer" }
+      }
+    },
+    "model": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "requested",
+        "returned",
+        "reasoningEffort",
+        "status",
+        "inputTokens",
+        "outputTokens",
+        "reasoningTokens",
+        "costUsd"
+      ],
+      "properties": {
+        "provider": { "enum": ["openai", "mock"] },
+        "requested": { "type": "string" },
+        "returned": { "type": ["string", "null"] },
+        "reasoningEffort": { "type": "string" },
+        "status": { "type": "string" },
+        "inputTokens": { "type": "integer", "minimum": 0 },
+        "outputTokens": { "type": "integer", "minimum": 0 },
+        "reasoningTokens": { "type": "integer", "minimum": 0 },
+        "costUsd": { "type": "number", "minimum": 0 }
+      }
+    },
+    "budget": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "dailyBudgetUsd",
+        "ceilingUsd",
+        "paidRunsToday",
+        "maxPaidRunsPerDay",
+        "allowed"
+      ],
+      "properties": {
+        "dailyBudgetUsd": { "type": "number" },
+        "ceilingUsd": { "type": "number" },
+        "paidRunsToday": { "type": "integer" },
+        "maxPaidRunsPerDay": { "type": "integer" },
+        "allowed": { "type": "boolean" }
+      }
+    },
+    "scrub": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "filesInPullRequest",
+        "filesSent",
+        "filesSkipped",
+        "bytesSent",
+        "secrets",
+        "pii"
+      ],
+      "properties": {
+        "filesInPullRequest": { "type": "integer" },
+        "filesSent": { "type": "integer" },
+        "filesSkipped": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "reason"],
+            "properties": {
+              "path": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "bytesSent": { "type": "integer" },
+        "secrets": { "$ref": "#/definitions/counts" },
+        "pii": { "$ref": "#/definitions/counts" }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid", "invalidReason", "items"],
+      "properties": {
+        "valid": { "type": ["boolean", "null"] },
+        "invalidReason": { "type": ["string", "null"], "maxLength": 400 },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "line",
+              "severity",
+              "confidence",
+              "category",
+              "placed"
+            ],
+            "properties": {
+              "path": { "type": "string" },
+              "line": { "type": "integer" },
+              "severity": { "type": "string" },
+              "confidence": { "type": "string" },
+              "category": { "type": "string" },
+              "placed": { "enum": ["inline", "general"] }
+            }
+          }
+        }
+      }
+    },
+    "injection": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "path", "line"],
+        "properties": {
+          "rule": { "type": "string" },
+          "path": { "type": "string" },
+          "line": { "type": "integer" }
+        }
+      }
+    },
+    "posting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "commentsPosted", "error"],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "commentsPosted": { "type": "integer" },
+        "error": { "type": ["string", "null"], "maxLength": 400 }
+      }
+    },
+    "latencyMs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "model"],
+      "properties": {
+        "total": { "type": "integer" },
+        "model": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}
