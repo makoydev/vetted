@@ -12,7 +12,7 @@ export interface VettedConfig {
   dailyBudgetUsd: number
   maxOutputTokens: number
   maxFiles: number
-  maxDiffChars: number
+  maxDiffBytes: number
   reviewLabel: string
   paths: { allow: string[]; deny: string[] }
 }
@@ -24,7 +24,7 @@ export const DEFAULT_CONFIG: VettedConfig = {
   dailyBudgetUsd: 0.2,
   maxOutputTokens: 8000,
   maxFiles: 50,
-  maxDiffChars: 60000,
+  maxDiffBytes: 60000,
   reviewLabel: 'ai-review',
   paths: { allow: [], deny: [] }
 }
@@ -37,7 +37,7 @@ interface FileConfig {
   reasoning_effort?: ReasoningEffort
   daily_budget_usd?: number
   max_output_tokens?: number
-  limits?: { max_files?: number; max_diff_chars?: number }
+  limits?: { max_files?: number; max_diff_bytes?: number }
   paths?: { allow?: string[]; deny?: string[] }
   review_label?: string
 }
@@ -74,7 +74,7 @@ export function parseConfig(text: string | null): VettedConfig {
     dailyBudgetUsd: raw.daily_budget_usd ?? DEFAULT_CONFIG.dailyBudgetUsd,
     maxOutputTokens: raw.max_output_tokens ?? DEFAULT_CONFIG.maxOutputTokens,
     maxFiles: raw.limits?.max_files ?? DEFAULT_CONFIG.maxFiles,
-    maxDiffChars: raw.limits?.max_diff_chars ?? DEFAULT_CONFIG.maxDiffChars,
+    maxDiffBytes: raw.limits?.max_diff_bytes ?? DEFAULT_CONFIG.maxDiffBytes,
     reviewLabel: raw.review_label ?? DEFAULT_CONFIG.reviewLabel,
     paths: {
       allow: raw.paths?.allow ?? [],

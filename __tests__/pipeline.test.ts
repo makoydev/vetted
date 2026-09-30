@@ -3,7 +3,7 @@ import { runPipeline, type Scrubber } from '../src/pipeline/index.js'
 
 const limits = {
   maxFiles: 50,
-  maxDiffChars: 60000,
+  maxDiffBytes: 60000,
   paths: { allow: [], deny: [] }
 }
 
@@ -71,12 +71,12 @@ describe('runPipeline', () => {
     const big = 'x'.repeat(900)
     const { files, report } = runPipeline(
       [file('a.ts', big), file('b.ts', big), file('c.ts', 'small')],
-      { ...limits, maxDiffChars: 1500 },
+      { ...limits, maxDiffBytes: 1500 },
       []
     )
     expect(files.map((f) => f.path)).toEqual(['a.ts', 'c.ts'])
     expect(report.filesSkipped).toEqual([{ path: 'b.ts', reason: 'size-cap' }])
-    expect(report.charsSent).toBeLessThanOrEqual(1500)
+    expect(report.bytesSent).toBeLessThanOrEqual(1500)
     expect(files[0].rendered).toContain(big)
   })
 
@@ -86,7 +86,7 @@ describe('runPipeline', () => {
         file('a.ts', 'x'.repeat(900)),
         file('b.ts', 'secret ' + 'x'.repeat(900))
       ],
-      { ...limits, maxDiffChars: 1500 },
+      { ...limits, maxDiffBytes: 1500 },
       [findWord('secret', 'SECRET:test', 'secrets')]
     )
     expect(report.secrets).toEqual({})

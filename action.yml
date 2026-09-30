@@ -19,7 +19,8 @@ inputs:
   github-token:
     description: >-
       Token used to read the pull request and post comments. Needs
-      `contents: read`, `pull-requests: write` and `actions: read`.
+      `contents: read`, `pull-requests: write`, and `actions: read` (only to
+      count today's runs for the budget guard).
     required: false
     default: ${{ github.token }}
   openai-api-key:
@@ -42,6 +43,10 @@ outputs:
     description: Number of changed files in the pull request.
   files-sent:
     description: Number of files that passed the path rules and size caps.
+  prompt-sha256:
+    description: SHA-256 of exactly what was sent to the model.
+  cost-usd:
+    description: Estimated cost of this run's model call in US dollars (0 for the mock).
 
 runs:
   using: node24

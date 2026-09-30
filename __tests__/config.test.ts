@@ -21,7 +21,7 @@ daily_budget_usd: 0.5
 max_output_tokens: 4000
 limits:
   max_files: 10
-  max_diff_chars: 20000
+  max_diff_bytes: 20000
 paths:
   allow: ['src/**']
   deny: ['docs/**']
@@ -33,7 +33,7 @@ review_label: ai
       dailyBudgetUsd: 0.5,
       maxOutputTokens: 4000,
       maxFiles: 10,
-      maxDiffChars: 20000,
+      maxDiffBytes: 20000,
       reviewLabel: 'ai',
       paths: { allow: ['src/**'], deny: ['docs/**'] }
     })
