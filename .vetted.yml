@@ -1,0 +1,13 @@
+# Vetted's settings for its own repository. Read from the pull request's
+# base commit, so a pull request can't change its own review (ADR 0007).
+version: 1
+model: gpt-6-luna
+reasoning_effort: low
+# Worst case with the defaults below: US$0.0104 per run, so at most 19 paid
+# runs a day, about US$6 a month even if every run hit its ceiling.
+daily_budget_usd: 0.2
+max_output_tokens: 8000
+limits:
+  max_files: 50
+  max_diff_bytes: 60000
+review_label: ai-review

@@ -1,0 +1,25 @@
+name: Vetted
+
+# Vetted reviews its own pull requests. It is pinned to an already-merged
+# commit on `next`, never `uses: ./`: running the pull request's own code
+# with write access and the API key would let the code under review decide
+# how it is reviewed. The pin is bumped by pull request as Vetted evolves.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  review:
+    name: Vetted review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vetted AI Code Review
+        uses: makoydev/vetted@f6ae25e2c71b7444af3a863adcc8296df544e52b # next, 2026-09-30 (#21)
+        with:
+          mode: shadow
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
