@@ -1,6 +1,6 @@
 # 0012. What Vetted posts, when, and how model text is made safe to post
 
-Status: drafted by Claude Code, awaiting Michael's review
+Status: accepted. Drafted by Claude Code; reviewed and accepted by Michael Mendoza on 2026-10-01.
 Date: 2026-09-30
 
 ## Context
