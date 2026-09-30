@@ -13,6 +13,8 @@ All notable changes to this project are documented here. The format follows
 - Changed files are read through the GitHub REST API; Vetted never checks out the pull request's code. Only `pull_request` events are supported; `pull_request_target` is refused.
 - Action inputs `github-token`, `openai-api-key` (masked in logs) and `config-path`.
 - Pre-send pipeline, first part ([#4](https://github.com/makoydev/vetted/issues/4)): a default deny list that config can extend or narrow but never re-open (`.env*`, `secrets/**`, keys and certificates, credential files, lockfiles, generated and vendored code, binaries); removed files and files without a text diff are skipped; a file cap and a character cap skip whole files and list them, never truncating one silently.
+- Secret scrubbing ([#4](https://github.com/makoydev/vetted/issues/4)): gitleaks' 221 default text rules (v8.30.1, vendored with checksums and licence) run with `re2js`, with five deliberate, tested differences that make it stricter (ADR 0010); plus an entropy backstop (32+ characters above 4.3 bits) for secrets no rule names. Parity with the real gitleaks binary: nothing gitleaks found was missed on its 3,658 test strings, and results were identical on 2,028 real source files.
+- Scripts: `npm run vendor:gitleaks`, `npm run parity:gitleaks`, `npm run measure:entropy`.
 - Diff handling: each file's patch is parsed into numbered lines; the model sees new-file line numbers; redaction keeps the line structure intact, including for secrets that span several lines.
 
 ### Changed
