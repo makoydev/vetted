@@ -90,12 +90,29 @@ These are **upper bounds by construction**, not measurements. Real per-review co
 
 ## 6. Pilot (single maintainer)
 
-| Repository                   | Pull requests reviewed | Mode   | Model | Comments posted |
-| ---------------------------- | ---------------------- | ------ | ----- | --------------- |
-| `discreet`                   | 1 (#1)                 | shadow | mock  | 0 (shadow)      |
-| `vetted` (dogfood, from #22) | from #22 onwards       | shadow | mock  | 0 (shadow)      |
+Measured on 2026-10-05 from Vetted's own audit artifacts (one per run), downloaded from the Discreet repository and totalled; for pull requests reviewed more than once, the latest run counts.
 
-Every run produced an audit artifact, for example `vetted-audit-1-36698308678-1` for Discreet #1. **Sample size: one pull request in Discreet, and a single maintainer.** No acceptance or override numbers exist yet. The pilot switches Discreet to opt-in on 2026-10-14, and Milestone 3's dashboard reports acceptance, overrides and cost per pull request.
+| Repository                   | Pull requests reviewed                                                           | Runs | Mode   | Model | Comments posted | Cost |
+| ---------------------------- | -------------------------------------------------------------------------------- | ---- | ------ | ----- | --------------- | ---- |
+| `discreet`                   | 12 of 13 (#1–#12; #13 opened in opt-in mode, unlabelled, so skipped as designed) | 37   | shadow | mock  | 0 (shadow)      | US$0 |
+| `vetted` (dogfood, from #22) | from #22 onwards                                                                 |      | shadow | mock  | 0 (shadow)      | US$0 |
+
+What Vetted did with Discreet's 12 pull requests before anything reached the model:
+
+|                                             | Count                                                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Files in the pull requests / sent / skipped | 139 / 130 / 9 (8 over the size cap, mostly vendored test fixtures; 1 on the default deny list) |
+| Bytes sent (after scrubbing)                | 373,676                                                                                        |
+| Secret-shaped strings scrubbed              | 18 (15 high-entropy, 3 generic API keys), all synthetic test keys in Discreet's tests          |
+| Personal data scrubbed                      | 89 (44 `PHONE`, 39 `NRIC`, 3 `EMAIL`, 3 `NRIC_LIKE`), all synthetic test values                |
+| Prompt-injection findings                   | 0                                                                                              |
+
+**Reading this honestly.**
+
+- **Sample size:** 12 pull requests, one maintainer, mock model only (`OPENAI_API_KEY` isn't set), so there are no review-quality, acceptance or override numbers yet. What the pilot does show is the pre-send pipeline working on a real, changing codebase.
+- **A gap the pilot exposed:** Vetted vendors sg-pii-rules **v0.1.0**, which doesn't know the card, postal code, unit number and date-of-birth rules added in v0.2.0 for Discreet. Discreet's synthetic test values of those kinds were therefore sent to the mock model unscrubbed. Nothing real was sent and no paid model was involved; upgrading Vetted to v0.2.0 is Milestone 3 work.
+- Some `PHONE` hits are probably eight-digit test constants rather than phone numbers, the false positive documented in sg-pii-rules ADR 0007.
+- Discreet switches to opt-in on 2026-10-14 (makoydev/discreet#13). Milestone 3's dashboard reports acceptance, overrides and cost per pull request.
 
 ## 7. Speed
 

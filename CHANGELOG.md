@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `EVALS.md` §6: pilot numbers from Milestone 2 (12 Discreet pull requests, 37 runs, what was scrubbed and skipped), and the gap it exposed: the vendored sg-pii-rules v0.1.0 doesn't cover the entities added in v0.2.0.
+
+### Changed
+
 - Vetted's self-review is pinned to the v0.1.0 release commit.
 
 ## [0.1.0] - 2026-10-01
