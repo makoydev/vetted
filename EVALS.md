@@ -92,10 +92,11 @@ These are **upper bounds by construction**, not measurements. Real per-review co
 
 Measured on 2026-10-05 from Vetted's own audit artifacts (one per run), downloaded from the Discreet repository and totalled; for pull requests reviewed more than once, the latest run counts.
 
-| Repository                   | Pull requests reviewed                                                           | Runs | Mode   | Model | Comments posted | Cost |
-| ---------------------------- | -------------------------------------------------------------------------------- | ---- | ------ | ----- | --------------- | ---- |
-| `discreet`                   | 12 of 13 (#1–#12; #13 opened in opt-in mode, unlabelled, so skipped as designed) | 37   | shadow | mock  | 0 (shadow)      | US$0 |
-| `vetted` (dogfood, from #22) | from #22 onwards                                                                 |      | shadow | mock  | 0 (shadow)      | US$0 |
+| Repository                                      | Pull requests reviewed                                                           | Runs | Mode   | Model | Comments posted | Cost |
+| ----------------------------------------------- | -------------------------------------------------------------------------------- | ---- | ------ | ----- | --------------- | ---- |
+| `discreet`                                      | 12 of 13 (#1–#12; #13 opened in opt-in mode, unlabelled, so skipped as designed) | 37   | shadow | mock  | 0 (shadow)      | US$0 |
+| `discreet`, whole shadow period (30 Sep–16 Oct) | 18 (#1–#12, #14–#19; counted from the Actions run list on 2026-10-16)            | 50   | shadow | mock  | 0 (shadow)      | US$0 |
+| `vetted` (dogfood, from #22)                    | from #22 onwards                                                                 |      | shadow | mock  | 0 (shadow)      | US$0 |
 
 What Vetted did with Discreet's 12 pull requests before anything reached the model:
 
@@ -112,7 +113,7 @@ What Vetted did with Discreet's 12 pull requests before anything reached the mod
 - **Sample size:** 12 pull requests, one maintainer, mock model only (`OPENAI_API_KEY` isn't set), so there are no review-quality, acceptance or override numbers yet. What the pilot does show is the pre-send pipeline working on a real, changing codebase.
 - **A gap the pilot exposed:** Vetted vendors sg-pii-rules **v0.1.0**, which doesn't know the card, postal code, unit number and date-of-birth rules added in v0.2.0 for Discreet. Discreet's synthetic test values of those kinds were therefore sent to the mock model unscrubbed. Nothing real was sent and no paid model was involved; upgrading Vetted to v0.2.0 is Milestone 3 work.
 - Some `PHONE` hits are probably eight-digit test constants rather than phone numbers, the false positive documented in sg-pii-rules ADR 0007.
-- Discreet switches to opt-in on 2026-10-14 (makoydev/discreet#13). Milestone 3's dashboard reports acceptance, overrides and cost per pull request.
+- **Discreet switched to opt-in on 2026-10-16** (makoydev/discreet#13, merged into `next` at 06:56 UTC), two days after the planned 14 Oct because the merge waited for Michael's go-ahead. The shadow period ran from 30 Sep to 16 Oct: 18 pull requests and 50 runs, all on the mock model. The scrubbing table above covers only the first 12 pull requests (measured 2026-10-05); it wasn't re-totalled for the six later ones (two release pull requests, two documentation changes and two Dependabot updates). From now on Vetted comments only on Discreet pull requests labelled `ai-review`. Milestone 3's dashboard reports acceptance, overrides and cost per pull request.
 
 ## 7. Speed
 
